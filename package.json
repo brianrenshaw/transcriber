@@ -1,0 +1,26 @@
+{
+  "name": "transcriber",
+  "version": "0.1.0",
+  "license": "MIT",
+  "private": true,
+  "description": "Local Mac transcription you can trust: two engines, every disagreement flagged, and a review screen synced to the audio.",
+  "main": "src/main/main.js",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test test/*.test.js",
+    "snapshot": "electron . --snapshot=out/snapshots",
+    "speech": "swift build -c release --package-path native/speech",
+    "app": "node scripts/package-app.js",
+    "share": "node scripts/package-app.js --share",
+    "notices": "node scripts/notices.js"
+  },
+  "devDependencies": {
+    "@electron/packager": "20.3.0",
+    "electron": "45.1.0"
+  },
+  "productName": "Transcriber"
+}

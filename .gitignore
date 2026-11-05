@@ -1,0 +1,7 @@
+.DS_Store
+node_modules/
+.build/
+out/
+# Local planning notes and reference screenshots, for this Mac only. Never pushed.
+replica/
+native/speech/.build/
