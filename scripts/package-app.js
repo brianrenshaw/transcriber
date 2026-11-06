@@ -86,6 +86,9 @@ async function build() {
   if (sign && !identity) throw new Error('No "Developer ID Application" certificate in this Mac\'s keychain. Install it, or build an unsigned zip with: npm run share -- --adhoc');
   if (sign && !notaryReady()) throw new Error(`No notarytool login named ${NOTARY_PROFILE}. Save one with: xcrun notarytool store-credentials ${NOTARY_PROFILE} --apple-id <Apple ID> --team-id <Team ID>`);
 
+  // Electron fetches its own binary the first time it is asked for, not at npm ci. The build takes Chromium's
+  // licenses from it, so a clean checkout fetches it here.
+  require('electron');
   execFileSync('/usr/bin/swift', ['build', '-c', 'release', '--package-path', path.join(root, 'native', 'speech')], {stdio: 'inherit'});
   const out = path.join(root, 'out', share ? 'share-build' : 'app');
   if (sign) console.log(`Signing as ${identity}; Apple's notarization takes a few minutes.`);
