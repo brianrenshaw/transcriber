@@ -13,10 +13,12 @@
     "start": "electron .",
     "test": "node --test test/*.test.js",
     "snapshot": "electron . --snapshot=out/snapshots",
+    "design": "electron . --design",
     "speech": "swift build -c release --package-path native/speech",
     "app": "node scripts/package-app.js",
     "share": "node scripts/package-app.js --share",
-    "notices": "node scripts/notices.js"
+    "notices": "node scripts/notices.js",
+    "tokens": "node scripts/tokens.js"
   },
   "devDependencies": {
     "@electron/packager": "20.3.0",

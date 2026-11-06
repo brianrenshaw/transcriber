@@ -35,6 +35,8 @@ const clock = sec => {
 const plural = (n, one, many = one + 's') => `${n} ${n === 1 ? one : many}`;
 const dateLabel = iso => new Date(iso).toLocaleDateString(undefined, {month: 'short', day: 'numeric', year: 'numeric'});
 const kbd = k => h('kbd', {}, k);
+// A rail button's key: named once in the help line under the card, and kept on the button as its tooltip.
+const keyed = (el, k) => { el.title = `${el.textContent} (${k})`; return el; };
 // Words as printed: um and uh keep their timings but never show (src/core/text.js marks them).
 const printed = (w1, w2) => state.data.words.slice(w1, w2).filter(w => !w.filler).map(w => w.text).join(' ');
 
@@ -206,7 +208,7 @@ function renderJob(main) {
         h('button', {type: 'button', id: 'tab-changes', 'aria-pressed': String(state.tab === 'changes'), onclick: () => setTab('changes')}, changesLabel())) : null,
       h('div', {class: 'menu-wrap'},
         h('button', {class: 'icon-btn', type: 'button', 'aria-label': 'More', title: 'More', onclick: () => toggleMenu()},
-          h('span', {style: 'font-size:18px;line-height:1;letter-spacing:1px'}, '···')),
+          h('span', {class: 'more', 'aria-hidden': 'true'}, '···')),
         h('div', {class: 'menu', id: 'job-menu', hidden: true})),
       ready() ? h('button', {class: 'btn primary', type: 'button', id: 'export-btn', onclick: exportJob, title: 'Export (⌘E)'}, 'Export…') : null));
   main.append(head);
@@ -601,10 +603,10 @@ function afterBulk() {
 // ---------------------------------------------------------------- the rail card
 
 function choiceRow(label, words, key, pressed, onclick, tag) {
-  return h('button', {class: 'choice' + (tag ? ' suggested' : ''), type: 'button', 'aria-pressed': String(Boolean(pressed)), onclick},
+  return h('button', {class: 'choice' + (tag ? ' suggested' : ''), type: 'button', 'aria-pressed': String(Boolean(pressed)), onclick,
+    title: key ? `${label} (${key})` : label},
     h('span', {class: 'who'}, label),
     h('span', {class: 'words' + (words ? '' : ' none')}, words || 'no words'),
-    key ? kbd(key) : h('span'),
     tag ? h('span', {class: 'pick-tag'}, tag) : null);
 }
 
@@ -841,6 +843,7 @@ function renderCard() {
   const slot = $('#card-slot');
   if (!slot) return;
   slot.replaceChildren();
+  state.keys = {};
   renderModeBar();
   const it = state.items[state.idx];
   const mine = state.items.filter(inMode);
@@ -874,22 +877,21 @@ function renderCard() {
       h('span', {class: 'who'}, `${x.label} · ${Math.round(x.share * 100)}%`), x.input,
       x.sug?.reason ? h('p', {class: 'why'}, x.sug.reason) : null))),
     h('div', {class: 'actions'},
-      h('button', {class: 'btn' + (d === 'accepted' ? '' : ' primary'), type: 'button', onclick: () => acceptNames(it, inputs)}, d === 'accepted' ? 'Names used' : 'Use these names', kbd('⏎')),
-      h('button', {class: 'btn quiet', type: 'button', onclick: () => decide(it, 'skipped')}, d === 'skipped' ? 'Skipped' : 'Skip', kbd('X'))),
+      keyed(h('button', {class: 'btn' + (d === 'accepted' ? '' : ' primary'), type: 'button', onclick: () => acceptNames(it, inputs)}, d === 'accepted' ? 'Names used' : 'Use these names'), '⏎'),
+      keyed(h('button', {class: 'btn quiet', type: 'button', onclick: () => decide(it, 'skipped')}, d === 'skipped' ? 'Skipped' : 'Skip'), 'X')),
     h('p', {class: 'reason'}, 'You can rename a voice later by clicking its name in the transcript.'));
   } else if (it.type === 'turn') {
     card.append(h('p', {class: 'edit-diff'}, h('del', {}, speakerName(it.from)), h('span', {class: 'arrow'}, '→'), h('ins', {}, speakerName(it.to))),
       h('p', {class: 'reason'}, it.reason),
       h('div', {class: 'actions'},
-        h('button', {class: 'btn' + (d === 'accepted' ? '' : ' primary'), type: 'button', onclick: () => decide(it, 'accepted')}, d === 'accepted' ? 'Changed' : 'Change speaker', kbd('⏎')),
-        h('button', {class: 'btn quiet', type: 'button', onclick: () => decide(it, 'skipped')}, d === 'skipped' ? 'Kept' : 'Keep', kbd('X')),
-        done(it) ? h('button', {class: 'btn quiet', type: 'button', onclick: () => decide(it, null)}, 'Undo', kbd('U')) : null));
+        keyed(h('button', {class: 'btn' + (d === 'accepted' ? '' : ' primary'), type: 'button', onclick: () => decide(it, 'accepted')}, d === 'accepted' ? 'Changed' : 'Change speaker'), '⏎'),
+        keyed(h('button', {class: 'btn quiet', type: 'button', onclick: () => decide(it, 'skipped')}, d === 'skipped' ? 'Kept' : 'Keep'), 'X'),
+        done(it) ? keyed(h('button', {class: 'btn quiet', type: 'button', onclick: () => decide(it, null)}, 'Undo'), 'U') : null));
   } else if (it.type === 'flag') {
     const pick = it.pick, lp = it.listPick;
     const choice = d?.choice;
     // Number keys follow the rows as shown. Each row says whose suggestion it is, so the words Enter will use
     // are always on screen.
-    state.keys = {};
     const tag = words => [lp && lp.text === words ? 'Word list' : null, pick && pick.text === words || (pick && pick.choice !== 'other' &&
       words === (pick.choice === 'parakeet' ? it.parakeet : it.whisper)) ? 'Claude’s pick' : null].filter(Boolean).join(' · ');
     const row = (label, words, value, t = tag(words)) => {
@@ -919,49 +921,51 @@ function renderCard() {
         e.stopPropagation();
       });
       card.append(h('div', {class: 'own'}, input, h('div', {class: 'actions'},
-        h('button', {class: 'btn primary', type: 'button', onclick: () => { state.owning = false; decide(it, {choice: 'custom', text: input.value.trim()}); }}, 'Use these words', kbd('⏎')),
+        keyed(h('button', {class: 'btn primary', type: 'button', onclick: () => { state.owning = false; decide(it, {choice: 'custom', text: input.value.trim()}); }}, 'Use these words'), '⏎'),
         h('button', {class: 'btn quiet', type: 'button', onclick: () => { state.owning = false; renderCard(); }}, 'Cancel'))));
       requestAnimationFrame(() => { input.focus(); input.select(); });
     } else {
       const actions = h('div', {class: 'actions'});
       const sug = lp ? lp.text : pick ? pick.text : null;
       const short = t => (t.length > 26 ? t.slice(0, 25).trimEnd() + '…' : t) || 'no words';
-      if (sug !== null && !done(it)) actions.append(h('button', {class: 'btn primary', type: 'button', onclick: () => acceptSuggestion(it)}, `Use “${short(sug)}”`, kbd('⏎')));
-      actions.append(h('button', {class: 'btn quiet', type: 'button', onclick: () => startOwn(it)}, 'Type it', kbd('E')));
-      if (done(it)) actions.append(h('button', {class: 'btn quiet', type: 'button', onclick: () => decide(it, null)}, 'Undo', kbd('U')));
+      if (sug !== null && !done(it)) actions.append(keyed(h('button', {class: 'btn primary', type: 'button', onclick: () => acceptSuggestion(it)}, `Use “${short(sug)}”`), '⏎'));
+      actions.append(keyed(h('button', {class: 'btn quiet', type: 'button', onclick: () => startOwn(it)}, 'Type it'), 'E'));
+      if (done(it)) actions.append(keyed(h('button', {class: 'btn quiet', type: 'button', onclick: () => decide(it, null)}, 'Undo'), 'U'));
       card.append(actions);
     }
   } else if (it.type === 'edit' && it.source === 'staff') {
     card.append(h('div', {class: 'actions'},
-      h('button', {class: 'btn', type: 'button', onclick: () => startManual(it.w1, it.w2, it.text)}, 'Change it', kbd('E')),
+      keyed(h('button', {class: 'btn', type: 'button', onclick: () => startManual(it.w1, it.w2, it.text)}, 'Change it'), 'E'),
       h('button', {class: 'btn quiet', type: 'button', onclick: () => removeManual(it.id)}, 'Remove my edit')));
   } else if (it.type === 'edit') {
     card.append(h('p', {class: 'reason'}, it.reason),
       h('div', {class: 'actions'},
-        h('button', {class: 'btn' + (d === 'accepted' ? '' : ' primary'), type: 'button', 'aria-pressed': String(d === 'accepted'), onclick: () => decide(it, 'accepted')}, d === 'accepted' ? 'Accepted' : 'Accept', kbd('⏎')),
-        h('button', {class: 'btn quiet', type: 'button', 'aria-pressed': String(d === 'skipped'), onclick: () => decide(it, 'skipped')}, d === 'skipped' ? 'Skipped' : 'Skip', kbd('X')),
-        done(it) && !(it.source === 'list' && it.always && d === 'accepted') ? h('button', {class: 'btn quiet', type: 'button', onclick: () => decide(it, null)}, 'Undo', kbd('U')) : null));
+        keyed(h('button', {class: 'btn' + (d === 'accepted' ? '' : ' primary'), type: 'button', 'aria-pressed': String(d === 'accepted'), onclick: () => decide(it, 'accepted')}, d === 'accepted' ? 'Accepted' : 'Accept'), '⏎'),
+        keyed(h('button', {class: 'btn quiet', type: 'button', 'aria-pressed': String(d === 'skipped'), onclick: () => decide(it, 'skipped')}, d === 'skipped' ? 'Skipped' : 'Skip'), 'X'),
+        done(it) && !(it.source === 'list' && it.always && d === 'accepted') ? keyed(h('button', {class: 'btn quiet', type: 'button', onclick: () => decide(it, null)}, 'Undo'), 'U') : null));
   } else {
     card.append(h('p', {class: 'edit-diff'}, h('ins', {}, it.text)),
       h('div', {class: 'actions'},
-        h('button', {class: 'btn' + (d === 'accepted' ? '' : ' primary'), type: 'button', onclick: () => decide(it, 'accepted')}, d === 'accepted' ? 'Added' : 'Add heading', kbd('⏎')),
-        h('button', {class: 'btn quiet', type: 'button', onclick: () => decide(it, 'skipped')}, d === 'skipped' ? 'Skipped' : 'Skip', kbd('X')),
-        done(it) ? h('button', {class: 'btn quiet', type: 'button', onclick: () => decide(it, null)}, 'Undo', kbd('U')) : null));
+        keyed(h('button', {class: 'btn' + (d === 'accepted' ? '' : ' primary'), type: 'button', onclick: () => decide(it, 'accepted')}, d === 'accepted' ? 'Added' : 'Add heading'), '⏎'),
+        keyed(h('button', {class: 'btn quiet', type: 'button', onclick: () => decide(it, 'skipped')}, d === 'skipped' ? 'Skipped' : 'Skip'), 'X'),
+        done(it) ? keyed(h('button', {class: 'btn quiet', type: 'button', onclick: () => decide(it, null)}, 'Undo'), 'U') : null));
   }
   slot.append(card);
   const left = remaining();
-  // The number keys this card has: two readings, or more with a word-list or Claude reading.
-  const n = Object.keys(state.keys || {}).length;
+  // Every key the card has, named once here: the number keys follow the readings as shown.
+  const n = Object.keys(state.keys).length;
   const nums = n > 3 ? `1 to ${n} decide` : n === 3 ? '1, 2 or 3 decides' : '1 or 2 decides';
+  const sug = it.type === 'flag' && !done(it) && (it.listPick || it.pick) ? ', Enter uses the suggestion' : '';
   slot.append(h('p', {class: 'rail-help'}, !left
     ? 'Everything is reviewed. Export saves the finished transcript.'
-    : listen(it) ? `R replays, S slows it down, J and K move, and ${nums}. Select any words in the transcript to change them.`
-      : 'Enter accepts, X skips, J and K move. Click any word to hear it, or select words to change them.'));
+    : it.type === 'flag' ? `${nums}${sug}, E types it, U undoes. R replays, S slows it down, J and K move. Select any words in the transcript to change them.`
+      : it.type === 'turn' ? 'Enter changes the speaker, X keeps it, U undoes. R replays, J and K move.'
+        : 'Enter accepts, X skips, U undoes, J and K move. Click any word to hear it, or select words to change them.'));
 }
 
 function cardLabel(it) {
   const t = clock(it.at);
-  if (it.type === 'flag') return it.w1 === it.w2 ? `Only one engine heard words here · ${t}` : `The engines heard different words · ${t}`;
+  if (it.type === 'flag') return it.w1 === it.w2 ? `Heard by one engine · ${t}` : `Engines disagree · ${t}`;
   if (it.type === 'edit') return it.source === 'list' ? `Word list correction · ${t}` : it.source === 'staff' ? `Your edit · ${t}`
     : `Claude suggests ${it.kind === 'word' ? 'a correction' : it.kind === 'quotation' ? 'quotation marks' : it.kind} · ${t}`;
   if (it.type === 'names') return 'Who is speaking';

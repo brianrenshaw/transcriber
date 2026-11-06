@@ -1,0 +1,74 @@
+/* The primitives page (design.html): every component in its states, built from the app's own classes in
+   styles.css. Only the page's frame is styled here; it has no colours of its own. */
+
+body.design { overflow: auto; height: auto; }
+.design-page { max-width: 1180px; margin: 0 auto; padding: var(--sp-6) var(--sp-6) var(--sp-7); }
+.design-page > header { margin-bottom: var(--sp-6); }
+.design-page > header h1 { margin: 0 0 var(--sp-1); font: 700 var(--fs-h1)/1.2 var(--serif); color: var(--text-strong); }
+.design-page > header p { margin: 0; max-width: 72ch; color: var(--text-muted); font-size: var(--fs-body); }
+
+.sect { margin: 0 0 var(--sp-6); }
+.sect > .label { display: block; margin: 0 0 var(--sp-3); }
+.panel { background: var(--surface); border-radius: var(--r-m); box-shadow: var(--elev-0); padding: var(--sp-4); }
+.panel.on-bg { background: var(--bg); box-shadow: inset 0 0 0 1px var(--border); }
+.panel.sunken { background: var(--surface-sunken); box-shadow: inset 0 0 0 1px var(--border); }
+.panel.flush { padding: 0; overflow: hidden; }
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: var(--sp-4); align-items: start; }
+.cols.three { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+.stack { display: grid; gap: var(--sp-3); }
+
+/* A grid of states: one row per variant, one column per state. */
+.states { display: grid; grid-template-columns: 96px repeat(5, minmax(0, 1fr)); gap: var(--sp-3) var(--sp-4); align-items: center; }
+.states .cap, .cap { color: var(--text-muted); font-size: var(--fs-note); }
+.states .head { color: var(--text-muted); font-size: var(--fs-note); padding-bottom: var(--sp-1); border-bottom: 1px solid var(--border); }
+.states > * { justify-self: start; }
+.specimen { display: grid; gap: var(--sp-1); justify-items: start; }
+
+/* Tokens, read from tokens.css by design.js. */
+.swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: var(--sp-3) var(--sp-2); }
+.swatch { display: grid; gap: 2px; font-size: var(--fs-note); min-width: 0; }
+.swatch .chip { height: 36px; border-radius: var(--r-s); box-shadow: inset 0 0 0 1px var(--border); }
+.swatch .name { color: var(--text-strong); font-weight: 700; overflow-wrap: anywhere; }
+.swatch .val, .scale .val { color: var(--text-muted); font-family: var(--mono); font-size: var(--fs-note); }
+.scales { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(0, 1.5fr); gap: var(--sp-5); }
+.scale { display: grid; gap: var(--sp-2); align-content: start; }
+.scale .item-row { display: grid; grid-template-columns: 84px 1fr; gap: var(--sp-2); align-items: center; }
+.scale .bar { height: 10px; border-radius: 2px; background: var(--text-muted); }
+.scale .box { height: 36px; width: 64px; background: var(--surface); }
+.scale.elev .box { border-radius: var(--r-m); }
+.scale.radius .box { box-shadow: inset 0 0 0 1.5px var(--border-input); }
+.motion-list { display: grid; grid-template-columns: 96px 1fr; gap: var(--sp-1) var(--sp-2); font-size: var(--fs-note); }
+.motion-list dt { color: var(--text-strong); font-weight: 700; }
+.motion-list dd { margin: 0; color: var(--text-muted); font-family: var(--mono); }
+
+.type-row { display: grid; grid-template-columns: 132px minmax(0, 1fr); gap: var(--sp-4); align-items: baseline; padding: var(--sp-2) 0;
+  border-bottom: 1px solid var(--border); }
+.type-row:last-child { border-bottom: 0; }
+.type-row p { margin: 0; }
+.t-label { font-size: var(--fs-label); letter-spacing: var(--tracking-label); text-transform: uppercase; font-weight: 700; color: var(--text-muted); }
+.t-note { font-size: var(--fs-note); }
+.t-ui { font-size: var(--fs-ui); }
+.t-body { font-size: var(--fs-body); }
+.t-quote { font: var(--fs-quote)/1.4 var(--serif); }
+.t-read { font: var(--fs-read)/var(--lh-read) var(--serif); }
+.t-h2 { font: 700 var(--fs-h2)/1.3 var(--serif); color: var(--text-strong); }
+.t-h1 { font: 700 var(--fs-h1)/1.2 var(--serif); color: var(--text-strong); }
+
+/* The reading view's word states, one per line. */
+.word-states { display: grid; grid-template-columns: 172px minmax(0, 1fr); gap: var(--sp-2) var(--sp-4); align-items: baseline; }
+.word-states .doc { margin: 0; max-width: none; }
+.word-states .doc p, .word-states .doc .speaker, .word-states .doc .heading { margin: 0; }
+
+/* Popovers, the menu and the veil sit in the page's flow here instead of over it. */
+.design-page .menu, .design-page .edit-chips, .design-page .edit-pop { position: static; animation: none; }
+.design-page .menu-wrap { display: inline-block; }
+.design-page .card { animation: none; }
+.design-page .rail { overflow: visible; }
+.design-page .notice { margin: 0; }
+.design-page .steps { margin: 0; }
+.design-page .setup-line { margin: 0; }
+.design-page .change-list { animation: none; }
+.frame { position: relative; height: 150px; border-radius: var(--r-m); overflow: hidden; background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--border); display: grid; place-items: center; }
+.frame .drop-veil { position: absolute; animation: none; }
+.frame .t-read { color: var(--text-muted); padding: 0 var(--sp-5); }

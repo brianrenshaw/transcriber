@@ -16,6 +16,8 @@ app.setName('Transcriber');
 if (process.env.TRANSCRIBER_HOME) app.setPath('userData', path.resolve(process.env.TRANSCRIBER_HOME));
 const UI = path.join(__dirname, '..', 'renderer');
 const snapshotDir = (process.argv.find(a => a.startsWith('--snapshot=')) || '').split('=')[1];
+// --design opens the primitives page (src/renderer/design.html) instead of the app; with --snapshot it photographs only that.
+const designOnly = process.argv.includes('--design');
 // One copy at a time per data folder: a second launch just brings the first one forward, so two pipelines
 // never work on the same transcripts.
 const primary = Boolean(snapshotDir) || app.requestSingleInstanceLock();
@@ -200,7 +202,7 @@ function createWindow() {
   });
   win.webContents.setWindowOpenHandler(() => ({action: 'deny'}));
   win.webContents.on('will-navigate', e => e.preventDefault());
-  win.loadURL('app://ui/index.html');
+  win.loadURL(designOnly ? 'app://ui/design.html' : 'app://ui/index.html');
   if (snapshotDir) {
     // A screenshot run reports the window's warnings and errors, so a broken screen shows in the output too.
     win.webContents.on('console-message', e => { if (e.level === 'warning' || e.level === 'error') console.log(`[window ${e.level}] ${e.message}`); });
@@ -216,6 +218,11 @@ async function snapshots(w, dir) {
   const js = code => w.webContents.executeJavaScript(code);
   try {
     await wait(1500);
+    if (!designOnly) await appShots();
+    await designShots();
+  } finally { app.quit(); }
+
+  async function appShots() {
     if (process.env.SNAPSHOT_JOB) { await js(`window.__test.open(${JSON.stringify(process.env.SNAPSHOT_JOB)})`); await wait(900); }
     // The transcript on screen now (SNAPSHOT_JOB, or the newest the window opened), so each theme starts on it.
     const id = await js('window.__test && window.__test.current()');
@@ -231,7 +238,31 @@ async function snapshots(w, dir) {
       await js('window.__test && window.__test.home()'); await wait(500); await shot(`${theme}-4-home`);
       if (id) { await js(`window.__test.open(${JSON.stringify(id)})`); await wait(700); }
     }
-  } finally { app.quit(); }
+  }
+
+  // The primitives page in both themes, a screen at a time. Hover, press and focus are forced on the elements
+  // that ask for them (data-force), so every state shows in a still picture.
+  async function designShots() {
+    if (!designOnly) { await w.loadURL('app://ui/design.html'); await wait(600); }
+    const dbg = w.webContents.debugger;
+    dbg.attach('1.3');
+    await dbg.sendCommand('DOM.enable');
+    await dbg.sendCommand('CSS.enable');
+    const {root} = await dbg.sendCommand('DOM.getDocument', {depth: -1});
+    const {nodeIds} = await dbg.sendCommand('DOM.querySelectorAll', {nodeId: root.nodeId, selector: '[data-force]'});
+    for (const nodeId of nodeIds) {
+      const {attributes} = await dbg.sendCommand('DOM.getAttributes', {nodeId});
+      const force = attributes[attributes.indexOf('data-force') + 1].split(/\s+/);
+      await dbg.sendCommand('CSS.forcePseudoState', {nodeId, forcedPseudoClasses: force});
+    }
+    for (const theme of ['light', 'dark']) {
+      nativeTheme.themeSource = theme;
+      await wait(400);
+      const [height, view] = await js('[document.documentElement.scrollHeight, innerHeight]');
+      for (let y = 0, n = 1; y < height; y += view, n++) { await js(`scrollTo(0, ${y})`); await wait(150); await shot(`design-${theme}-${n}`); }
+    }
+    dbg.detach();
+  }
 }
 
 app.on('second-instance', () => showWindow());

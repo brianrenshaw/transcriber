@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:">
+<title>Transcriber design system</title>
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="design.css">
+<script type="module" src="design.js"></script>
+</head>
+<!-- Every component in its states, on the app's own classes. The specs are in design/components.md. Hover, press
+     and focus are forced by the snapshot run (data-force); opened with npm run design, they are live. -->
+<body class="design">
+<div class="design-page">
+  <header>
+    <h1>Transcriber design system</h1>
+    <p>Every component in its states, built from the app's own stylesheet and tokens. The accent marks only the
+      primary action and the current selection; amber marks what still needs a decision.</p>
+  </header>
+
+  <section class="sect">
+    <span class="label">Colour roles</span>
+    <div class="panel"><div class="swatches" id="swatches"></div></div>
+  </section>
+
+  <section class="sect">
+    <span class="label">Type</span>
+    <div class="panel">
+      <div class="type-row"><span class="cap">label · 11 caps</span><p class="t-label">Repeat · Edit · 1:43</p></div>
+      <div class="type-row"><span class="cap">note · 12</span><p class="t-note">Added today · 42:18 · 6 of 14 to review</p></div>
+      <div class="type-row"><span class="cap">ui · 13</span><p class="t-ui">Transcribe again</p></div>
+      <div class="type-row"><span class="cap">body · 14</span><p class="t-body">Accept the stutters and punctuation a group at a time.</p></div>
+      <div class="type-row"><span class="cap">quote · 16 serif</span><p class="t-quote">we moved the meeting to Thursday</p></div>
+      <div class="type-row"><span class="cap">read · 18 serif</span><p class="t-read">So the plan is simple. We record every session, and the two engines tell us where to listen.</p></div>
+      <div class="type-row"><span class="cap">h2 · 18 serif</span><p class="t-h2">Getting the transcript ready</p></div>
+      <div class="type-row"><span class="cap">h1 · 22 serif</span><p class="t-h1">Planning call, March</p></div>
+    </div>
+  </section>
+
+  <section class="sect">
+    <span class="label">Space, radius, elevation, motion</span>
+    <div class="panel"><div class="scales" id="scales"></div></div>
+  </section>
+
+  <section class="sect">
+    <span class="label">Buttons</span>
+    <div class="panel">
+      <div class="states">
+        <span></span><span class="head">Default</span><span class="head">Hover</span><span class="head">Pressed</span><span class="head">Focus</span><span class="head">Disabled</span>
+        <span class="cap">Primary</span>
+        <button class="btn primary" type="button">Export…</button>
+        <button class="btn primary" type="button" data-force="hover">Export…</button>
+        <button class="btn primary" type="button" data-force="hover active">Export…</button>
+        <button class="btn primary" type="button" data-force="focus-visible">Export…</button>
+        <button class="btn primary" type="button" disabled>Export…</button>
+        <span class="cap">Secondary</span>
+        <button class="btn" type="button">Accept all 4</button>
+        <button class="btn" type="button" data-force="hover">Accept all 4</button>
+        <button class="btn" type="button" data-force="hover active">Accept all 4</button>
+        <button class="btn" type="button" data-force="focus-visible">Accept all 4</button>
+        <button class="btn" type="button" disabled>Accept all 4</button>
+        <span class="cap">Quiet</span>
+        <button class="btn quiet" type="button">Dismiss</button>
+        <button class="btn quiet" type="button" data-force="hover">Dismiss</button>
+        <button class="btn quiet" type="button" data-force="hover active">Dismiss</button>
+        <button class="btn quiet" type="button" data-force="focus-visible">Dismiss</button>
+        <button class="btn quiet" type="button" disabled>Dismiss</button>
+        <span class="cap">With key</span>
+        <button class="btn primary" type="button">Choose files…<kbd>⌘O</kbd></button>
+        <button class="btn quiet" type="button">Cancel<kbd>esc</kbd></button>
+        <span></span><span></span><span></span>
+      </div>
+    </div>
+  </section>
+
+  <section class="sect">
+    <div class="cols three">
+      <div>
+        <span class="label">Icon buttons</span>
+        <div class="panel">
+          <div class="states icon-states">
+            <span class="cap">More</span>
+            <button class="icon-btn" type="button" aria-label="More"><span class="more" aria-hidden="true">···</span></button>
+            <button class="icon-btn" type="button" aria-label="More" data-force="hover"><span class="more" aria-hidden="true">···</span></button>
+            <button class="icon-btn" type="button" aria-label="More" data-force="focus-visible"><span class="more" aria-hidden="true">···</span></button>
+            <span></span><span></span>
+            <span class="cap">Pager</span>
+            <button class="icon-btn nav" type="button" aria-label="Previous (K)"><svg viewBox="0 0 14 14"><path d="M8.5 3 4.5 7l4 4"/></svg></button>
+            <button class="icon-btn nav" type="button" aria-label="Next (J)" data-force="hover"><svg viewBox="0 0 14 14"><path d="M5.5 3l4 4-4 4"/></svg></button>
+            <button class="icon-btn nav" type="button" aria-label="Previous (K)" disabled><svg viewBox="0 0 14 14"><path d="M8.5 3 4.5 7l4 4"/></svg></button>
+            <span></span><span></span>
+          </div>
+        </div>
+      </div>
+      <div>
+        <span class="label">Segmented control</span>
+        <div class="panel stack">
+          <div class="seg" role="group" aria-label="View">
+            <button type="button" aria-pressed="true">Transcript</button>
+            <button type="button" aria-pressed="false" data-force="hover">Changes <span class="n">14</span></button>
+          </div>
+          <div class="seg" role="group" aria-label="Show">
+            <button type="button" aria-pressed="false">To review<span class="n">6</span></button>
+            <button type="button" aria-pressed="true" data-force="focus-visible">All<span class="n">14</span></button>
+          </div>
+          <span class="cap">Selected, hover, focus</span>
+        </div>
+      </div>
+      <div>
+        <span class="label">Menu</span>
+        <div class="panel on-bg">
+          <div class="menu-wrap"><div class="menu">
+            <button type="button" disabled>Transcribe again</button>
+            <hr>
+            <button type="button" data-force="hover">Show in Finder</button>
+            <button type="button">Move to Trash</button>
+          </div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sect">
+    <div class="cols">
+      <div>
+        <span class="label">Sidebar rows and setup</span>
+        <div class="panel on-bg stack">
+          <div class="side-head"><button class="icon-btn" type="button" aria-label="Add recordings" title="Add recordings (⌘O)"><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M7 2.5v9M2.5 7h9"/></svg></button></div>
+          <div class="jobs">
+            <button class="job-row" type="button" aria-current="true"><span class="job-title">Planning call, March</span><span class="job-meta">6 to review · 42:18</span></button>
+            <button class="job-row" type="button" data-force="hover"><span class="job-title">Interview with the archive team</span><span class="job-meta">Reviewed · 1:04:52</span></button>
+            <button class="job-row" type="button"><span class="job-title">Board meeting</span><span class="job-meta">Transcribing with Whisper · 38%</span></button>
+            <button class="job-row" type="button" data-force="focus-visible"><span class="job-title">Voice memo 14</span><span class="job-meta error">Couldn't read this file</span></button>
+          </div>
+          <div class="setup-line" role="status">Downloading the speech models · 412 of 980 MB<span class="meter"><span id="meter-fill"></span></span></div>
+          <div class="setup-line bad" role="status">The models didn't download: the connection dropped.<button class="btn quiet" type="button">Retry</button></div>
+        </div>
+      </div>
+      <div>
+        <span class="label">Notice and inputs</span>
+        <div class="panel stack">
+          <div class="notice" role="status"><strong>Two files weren't added.</strong><span>Notes.pdf and cover.png aren't audio or video.</span><button class="btn quiet" type="button">Dismiss</button></div>
+          <div class="specimen"><span class="cap">Default</span><input class="link-input people" type="text" placeholder="Who’s speaking (optional): Ada Park, Sam Ortiz" aria-label="Who is speaking"></div>
+          <div class="specimen"><span class="cap">Focus</span><input class="link-input people" type="text" value="Ada Park, Sam Ortiz" aria-label="Who is speaking" data-force="focus"></div>
+          <div class="own"><span class="cap">Transcript words</span><input type="text" value="we moved the meeting to Thursday" aria-label="The words to use"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sect">
+    <div class="cols">
+      <div>
+        <span class="label">Drop zone</span>
+        <div class="panel">
+          <div class="drop-zone big">
+            <p class="zone-title">Drop audio or video files here</p>
+            <p class="zone-hint">MP3, M4A, WAV, AIFF, FLAC, MP4, MOV and more. Everything stays on this Mac.</p>
+            <button class="btn primary" type="button">Choose files…<kbd>⌘O</kbd></button>
+          </div>
+        </div>
+      </div>
+      <div class="stack">
+        <div>
+          <span class="label">Drop veil</span>
+          <div class="frame"><p class="t-read">So the plan is simple. We record every session.</p><div class="drop-veil"><p>Drop to add</p></div></div>
+        </div>
+        <div>
+          <span class="label">Steps</span>
+          <div class="panel">
+            <div class="steps">
+              <div class="step done"><span class="dot"></span><span class="what">Transcribe with Parakeet</span><span class="when">41 s</span></div>
+              <div class="step running"><span class="dot"></span><span class="what">Transcribe with Whisper</span><span class="when">38%</span></div>
+              <div class="step pending"><span class="dot"></span><span class="what">Find who is speaking</span><span class="when"></span></div>
+              <div class="step error"><span class="dot"></span><span class="what">Compare the two</span><span class="when"></span>
+                <div class="err">The Whisper transcript was empty. <button class="btn quiet" type="button">Try again</button></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sect">
+    <span class="label">Transcript and its word states</span>
+    <div class="panel">
+      <div class="word-states">
+        <span class="cap">Speaker, named</span><div class="doc"><p class="speaker">Ada Park</p></div>
+        <span class="cap">Speaker, unnamed</span><div class="doc"><p class="speaker unnamed">Speaker 2</p></div>
+        <span class="cap">Heading, suggested</span><div class="doc"><p class="heading proposed">The budget</p></div>
+        <span class="cap">Needs a decision</span><div class="doc"><p>we moved the meeting to <span class="item pending">Thursday</span> after all</p></div>
+        <span class="cap">The open flag</span><div class="doc"><p>we moved the meeting to <span class="item pending current">Thursday</span> after all</p></div>
+        <span class="cap">Hover on a flag</span><div class="doc"><p>we moved the meeting to <span class="item pending" data-force="hover">Thursday</span> after all</p></div>
+        <span class="cap">Changed</span><div class="doc"><p>we moved the meeting to <span class="item changed">Thursday</span> after all</p></div>
+        <span class="cap">Removed</span><div class="doc"><p>so <span class="item changed gone"></span>we moved the meeting</p></div>
+        <span class="cap">Whisper heard more</span><div class="doc"><p>we moved <span class="item insert">+</span> the meeting</p></div>
+        <span class="cap">Suggestion, undecided</span><div class="doc"><p>we moved the meeting to <span class="item proposed tracked"><del>Thursday's</del><ins>Thursday</ins></span> after all</p></div>
+        <span class="cap">Speaker check</span><div class="doc"><p>after all. <span class="item turn-mark">⇄</span> Right, and the room</p></div>
+        <span class="cap">Now playing</span><div class="doc"><p>we moved the <span class="w now">meeting</span> to Thursday</p></div>
+        <span class="cap">Hover on a word</span><div class="doc"><p>we moved the <span class="w" data-force="hover">meeting</span> to Thursday</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sect">
+    <span class="label">Editing words</span>
+    <div class="panel">
+      <div class="cols">
+        <div class="specimen"><span class="cap">Chips over a selection</span>
+          <div class="edit-chips"><button class="edit-chip" type="button">Edit<kbd>E</kbd></button><button class="edit-chip quiet" type="button">New paragraph<kbd>P</kbd></button></div>
+        </div>
+        <div class="specimen"><span class="cap">The popover</span>
+          <div class="edit-pop" role="dialog" aria-label="Edit the transcript">
+            <div class="edit-pop-top"><span class="label">Edit · 1:43</span><button class="btn quiet" type="button">▶ Play</button></div>
+            <textarea class="manual-input" rows="2" aria-label="The words as they should read">we moved the meeting to Thursday</textarea>
+            <div class="actions"><button class="btn primary" type="button">Save<kbd>⏎</kbd></button><button class="btn quiet" type="button">Cancel<kbd>esc</kbd></button></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sect">
+    <span class="label">Review rail</span>
+    <div class="cols">
+      <div class="panel on-bg flush">
+        <div class="rail">
+          <div class="modebar"><div class="progress"><span>8 of 14 left to review</span><span class="bar"><span id="progress-fill"></span></span></div></div>
+          <div class="card">
+            <div class="card-top"><span class="label">Engines disagree · 1:43</span>
+              <span class="pager"><button class="icon-btn nav" type="button" aria-label="Previous (K)"><svg viewBox="0 0 14 14"><path d="M8.5 3 4.5 7l4 4"/></svg></button><span class="count">6 of 14</span><button class="icon-btn nav" type="button" aria-label="Next (J)"><svg viewBox="0 0 14 14"><path d="M5.5 3l4 4-4 4"/></svg></button></span></div>
+            <div class="clip"><button class="play small" type="button" aria-label="Play this spot (R)"><svg viewBox="0 0 14 14"><path d="M3 1.5v11l9.5-5.5z"/></svg></button>
+              <div class="clip-track"><span class="band" id="clip-band"></span><span class="clip-head" id="clip-head"></span></div>
+              <button class="btn quiet speed" type="button">1×</button></div>
+            <p class="context">so in the end we moved the meeting to <mark>Thursday's</mark> after all, which suits the room</p>
+            <div class="choices">
+              <button class="choice" type="button" aria-pressed="false"><span class="who">Parakeet</span><span class="words">Thursday's</span></button>
+              <button class="choice" type="button" aria-pressed="true"><span class="who">Whisper</span><span class="words">Thursday</span></button>
+              <button class="choice" type="button" aria-pressed="false" data-force="hover"><span class="who">Word list</span><span class="words">Thursday</span></button>
+            </div>
+            <div class="actions"><button class="btn quiet" type="button">Type it</button><button class="btn quiet" type="button">Undo</button></div>
+          </div>
+          <p class="rail-help">1, 2 or 3 decides, E types it, U undoes. R replays, S slows it down, J and K move. Select any words in the transcript to change them.</p>
+        </div>
+      </div>
+      <div class="stack">
+        <div class="panel on-bg flush">
+          <div class="rail">
+            <div class="card">
+              <div class="card-top"><span class="label">Heard by one engine · 12:07</span><span class="pager"><span class="count">9 of 14</span></span></div>
+              <div class="choices">
+                <button class="choice" type="button" aria-pressed="false"><span class="who">Parakeet</span><span class="words none">no words</span></button>
+                <button class="choice suggested" type="button" aria-pressed="false"><span class="who">Whisper</span><span class="words">you know</span><span class="pick-tag">Suggested</span></button>
+                <button class="choice" type="button" aria-pressed="false" data-force="focus-visible"><span class="who">Typed</span><span class="words">you know,</span></button>
+              </div>
+              <div class="why-block">
+                <p class="why-line"><span class="label">Word list</span> Write it as “you know” when it starts a sentence.</p>
+                <div class="evidence">
+                  <div class="ev"><span class="ev-kind">Recording</span><span class="ev-text">“you know, the room was full”</span><button class="btn quiet ev-play" type="button">▶ 14:22</button></div>
+                  <div class="ev"><span class="ev-kind">Word list</span><span class="ev-text">you know → you know</span><span></span></div>
+                </div>
+              </div>
+              <div class="own"><input type="text" value="you know," aria-label="The words to use" data-force="focus">
+                <div class="actions"><button class="btn primary" type="button">Use these words</button><button class="btn quiet" type="button">Cancel</button></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="panel on-bg flush">
+          <div class="rail">
+            <div class="card">
+              <div class="card-top"><span class="label">Who is speaking</span><span class="pager"><span class="count">1 of 14</span></span></div>
+              <div class="names">
+                <div class="name-row"><span class="who">Speaker 1</span><input type="text" value="Ada Park" aria-label="Name for Speaker 1"><p class="why">Says “I’m Ada” at 0:04.</p></div>
+                <div class="name-row"><span class="who">Speaker 2</span><input type="text" placeholder="Speaker 2" aria-label="Name for Speaker 2"></div>
+              </div>
+              <div class="actions"><button class="btn primary" type="button">Use these names</button></div>
+            </div>
+            <div class="rail-done"><p>Everything is reviewed. Export saves the finished transcript.</p></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sect">
+    <span class="label">Player bar</span>
+    <div class="panel on-bg flush">
+      <div class="player">
+        <button class="play" type="button" aria-label="Play (Space)"><svg viewBox="0 0 14 14"><path d="M3 1.5v11l9.5-5.5z"/></svg></button>
+        <span class="time">14:22 / 42:18</span>
+        <div class="track" role="slider" aria-label="Position" aria-valuemin="0" aria-valuemax="2538" aria-valuenow="862" id="track"><span class="fill" id="track-fill"></span></div>
+        <button class="btn quiet speed" type="button">1×</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="sect">
+    <span class="label">Changes</span>
+    <div class="changes panel">
+      <div class="groups">
+        <section class="group">
+          <div class="group-head"><button class="group-toggle" type="button" aria-expanded="false"><svg viewBox="0 0 14 14"><path d="M5 3.5 8.5 7 5 10.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="group-title">Engines disagree</span><span class="n">6 of 9 to review</span></button>
+            <div class="acts"><span class="status">Listen to decide</span></div></div>
+          <p class="group-hint">The two engines heard different words. Play each spot and choose.</p>
+        </section>
+        <section class="group open">
+          <div class="group-head"><button class="group-toggle" type="button" aria-expanded="true" data-force="hover"><svg viewBox="0 0 14 14"><path d="M5 3.5 8.5 7 5 10.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="group-title">Stutters and repeats</span><span class="n">2 of 3 to review</span></button>
+            <div class="acts"><button class="btn" type="button">Accept all 2</button></div></div>
+          <p class="group-hint">Repeated words the recording doesn't need. Accept them together, or open one to hear it.</p>
+          <ol class="change-list">
+            <li class="change"><button class="btn quiet at" type="button">▶ 3:12</button>
+              <div class="what"><span class="label">Repeat</span><p class="diff"><span class="ctx">and then </span><del>we we</del><ins>we</ins><span class="ctx"> moved it</span></p><p class="change-why">The same word twice in a row.</p></div>
+              <div class="acts"><button class="btn" type="button">Accept</button><button class="btn quiet" type="button">Skip</button></div></li>
+            <li class="change" data-force="hover"><button class="btn quiet at" type="button">▶ 7:40</button>
+              <div class="what"><span class="label">Stutter</span><p class="diff"><span class="ctx">the </span><del>b- budget</del><ins>budget</ins><span class="ctx"> for May</span></p></div>
+              <div class="acts"><button class="btn" type="button">Accept</button><button class="btn quiet" type="button">Skip</button></div></li>
+            <li class="change done"><button class="btn quiet at" type="button">▶ 9:05</button>
+              <div class="what"><span class="label">Repeat</span><p class="diff"><span class="ctx">it was </span><del>it was</del><span class="ctx"> fine</span></p></div>
+              <div class="acts"><span class="status">Accepted</span><button class="btn quiet" type="button">Undo</button></div></li>
+          </ol>
+        </section>
+      </div>
+    </div>
+  </section>
+</div>
+</body>
+</html>

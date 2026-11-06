@@ -4,18 +4,18 @@
 <meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; media-src 'self'; img-src 'self' data:">
 <title>Transcriber</title>
+<link rel="stylesheet" href="tokens.css">
 <link rel="stylesheet" href="styles.css">
 <script type="module" src="app.js"></script>
 </head>
 <body>
 <div class="app">
   <aside class="sidebar">
-    <div class="brand drag">Transcriber</div>
+    <div class="side-head drag">
+      <button class="icon-btn" id="add-recording" type="button" aria-label="Add recordings" title="Add recordings (⌘O)"><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M7 2.5v9M2.5 7h9"/></svg></button>
+    </div>
     <nav class="jobs" id="jobs" aria-label="Transcripts"></nav>
     <div class="setup-line" id="setup-line" role="status" hidden></div>
-    <div class="sidebar-foot">
-      <button class="btn quiet" id="add-recording" type="button" title="Add recordings (⌘O)">Add recording</button>
-    </div>
   </aside>
   <main class="main" id="main"></main>
 </div>
