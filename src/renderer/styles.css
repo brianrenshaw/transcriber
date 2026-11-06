@@ -74,6 +74,7 @@ kbd { font: 700 var(--fs-label)/1 var(--sans); color: var(--text-muted); border:
 .job-head h1 { margin: 0; font: 700 var(--fs-h1)/1.2 var(--serif); color: var(--text-strong); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .job-head .meta { color: var(--text-muted); font-size: var(--fs-note); margin-top: 2px; }
 .job-head .meta .working { color: var(--review-text); }
+.job-head .meta .btn.inline { padding: 0 var(--sp-1); font-size: inherit; line-height: inherit; color: var(--accent); }
 .job-actions { display: flex; align-items: center; gap: var(--sp-2); }
 .seg { display: inline-flex; background: var(--hover); border-radius: var(--r-s); padding: 2px; }
 .seg button { border: 0; background: transparent; border-radius: 5px; padding: 4px var(--sp-3); color: var(--text-muted);

@@ -25,5 +25,8 @@
     "@electron/packager": "20.3.0",
     "electron": "45.1.0"
   },
-  "productName": "Transcriber"
+  "productName": "Transcriber",
+  "dependencies": {
+    "@anthropic-ai/sdk": "1.1.0"
+  }
 }

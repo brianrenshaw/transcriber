@@ -3,8 +3,16 @@
 
 const desk = window.desk;
 const STEP_NAMES = {download: 'Downloading the recording', parakeet: 'Transcribing with Parakeet', whisper: 'Checking with Whisper',
-  compare: 'Comparing the two'};
-const STEP_ORDER = ['download', 'parakeet', 'whisper', 'compare'];
+  compare: 'Comparing the two', ai: 'Asking Claude for suggestions'};
+const STEP_ORDER = ['download', 'parakeet', 'whisper', 'compare', 'ai'];
+// A step whose failure leaves a transcript that still works: without Whisper nothing is flagged, and without
+// Claude there are no suggestions.
+const SOFT = new Set(['whisper', 'ai']);
+// "claude-opus-5-5" as people say it: Claude Opus 5.5.
+const modelLabel = id => {
+  const m = /claude-(opus|sonnet|haiku|fable)-(\d+)(?:-(\d{1,2}))?(?!\d)/.exec(String(id || ''));
+  return m ? `Claude ${m[1][0].toUpperCase()}${m[1].slice(1)} ${m[2]}${m[3] ? `.${m[3]}` : ''}` : 'Claude';
+};
 const AUDIO_EXT = /\.(mp3|m4a|wav|aac|aiff?|flac|ogg|opus|mp4|mov|m4v)$/i;
 
 const state = {
@@ -118,7 +126,7 @@ function setDecision(it, value) {
 
 function jobStatus(job) {
   const s = job.steps || {};
-  const err = STEP_ORDER.find(k => s[k]?.state === 'error' && k !== 'whisper');
+  const err = STEP_ORDER.find(k => s[k]?.state === 'error' && !SOFT.has(k));
   if (err) return {text: `${STEP_NAMES[err]} failed`, error: true};
   const running = STEP_ORDER.find(k => s[k]?.state === 'running');
   if (running) return {text: STEP_NAMES[running]};
@@ -243,6 +251,19 @@ function renderMeta() {
   const tab = $('#tab-changes');
   if (tab) tab.textContent = changesLabel();
   if (job.steps.whisper?.state === 'error') el.append(' · ', h('span', {class: 'working', title: job.steps.whisper.error || ''}, 'Whisper failed, so nothing is flagged'));
+  if (ready()) {
+    const ai = job.steps.ai || {};
+    if (ai.state === 'running' || (ai.state === 'pending' && state.aiMode !== 'off')) el.append(' · ', h('span', {class: 'working'}, 'Claude is reading the transcript'));
+    else if (ai.state === 'error') {
+      // The reason last, where the line may run out of room; all of it is in the tooltip.
+      el.append(' · ', h('span', {class: 'working', title: ai.error || ''}, 'No suggestions from Claude'), ' ',
+        h('button', {class: 'btn quiet inline', type: 'button', onclick: () => rerun('ai')}, 'Try again'), ' ',
+        h('span', {title: ai.error || ''}, ai.error || ''));
+    } else if (state.data.ai) {
+      const via = state.data.ai.via === 'api-key' ? 'with your API key' : 'through your Claude Code sign-in';
+      el.append(' · ', h('span', {title: `Asked ${via}`}, `Suggestions from ${modelLabel(state.data.ai.model)}`));
+    }
+  }
   if (state.exported) el.append(' · ', `Exported ${state.exported}`);
 }
 
@@ -262,8 +283,14 @@ function toggleMenu(force) {
   if (!open) return;
   const s = state.data.job.steps;
   const item = (label, fn, disabled) => h('button', {type: 'button', disabled, onclick: () => { menu.hidden = true; fn(); }}, label);
+  const busy = STEP_ORDER.some(k => s[k]?.state === 'running' || (k === 'ai' && s[k]?.state === 'pending' && state.aiMode !== 'off'));
+  // Claude, when it is on: for this transcript now, or again. When it is off, the way to turn it on.
+  const ask = state.aiMode === 'off'
+    ? item('Turn On Claude’s Suggestions…', () => desk.settings())
+    : item(state.data.ai ? 'Ask Claude Again' : 'Ask Claude', () => rerun('ai'), busy || s.compare?.state !== 'done');
   menu.replaceChildren(
-    item('Transcribe again', () => rerun('parakeet'), STEP_ORDER.some(k => s[k]?.state === 'running')),
+    item('Transcribe again', () => rerun('parakeet'), busy),
+    ask,
     h('hr'),
     item('Show in Finder', () => desk.reveal(state.id)),
     item('Move to Trash', trashJob));
@@ -289,7 +316,7 @@ async function trashJob() {
 function renderSteps() {
   const s = state.data.job.steps;
   return h('div', {class: 'steps'}, h('h2', {}, 'Getting the transcript ready'),
-    ...STEP_ORDER.filter(k => k !== 'download').map(k => {
+    ...STEP_ORDER.filter(k => k !== 'download' && (k !== 'ai' || (state.aiMode !== 'off' ? s.ai?.state !== 'off' : ['running', 'error'].includes(s.ai?.state)))).map(k => {
       const st = s[k] || {state: 'pending'};
       let when = '';
       if (st.state === 'running' && st.startedAt) when = st.info || 'working';
@@ -1430,8 +1457,8 @@ desk.onJob(async job => {
   if (job.id !== state.id || state.view !== 'job') return;
   const before = state.data?.job.steps || {};
   state.data.job = {...state.data.job, ...job};
-  // Reopen when a step finishes that changes what the screen shows.
-  const changed = ['compare'].some(s => before[s]?.state !== job.steps[s]?.state);
+  // Reopen when a step finishes that changes what the screen shows: the comparison, and Claude's answer.
+  const changed = before.compare?.state !== job.steps.compare?.state || (before.ai?.state !== 'done' && job.steps.ai?.state === 'done');
   if (changed) {
     // Never cut off what someone is listening to; pick up the new results when the audio stops.
     if (audio && !audio.paused) { state.reloadOnPause = true; renderMeta(); return; }
@@ -1504,7 +1531,11 @@ window.__test = {
   setup: ({speech} = {}) => { if (speech) state.speech = speech; drawSpeech(); },
 };
 
+// Whether Claude's suggestions are on, as Settings says; the menu and the header follow it.
+desk.onAi(mode => { state.aiMode = mode; if (state.data) renderMeta(); });
+
 (async () => {
+  state.aiMode = await desk.aiMode();
   await refreshJobs();
   if (state.jobs.length) await selectJob(state.jobs[0].id);
   else render();

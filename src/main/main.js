@@ -1,7 +1,7 @@
 // The Electron main process: the window, the menu, the app:// protocol that serves the interface and the
 // recordings, and the handlers the window calls through preload.js.
 
-const {app, BrowserWindow, Menu, dialog, ipcMain, nativeTheme, net, protocol, screen, session, shell} = require('electron');
+const {app, BrowserWindow, Menu, dialog, ipcMain, nativeTheme, net, protocol, safeStorage, screen, session, shell} = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
 const {Readable} = require('node:stream');
@@ -9,7 +9,8 @@ const Settings = require('./settings');
 const Store = require('./store');
 const Pipeline = require('./pipeline');
 const Speech = require('./speech');
-const {items, paragraphStarts, assemble, progress, emptyReview} = require('../core/review');
+const Claude = require('./claude');
+const {items, paragraphStarts, assemble, progress, emptyReview, withoutAi} = require('../core/review');
 
 app.setName('Transcriber');
 // TRANSCRIBER_HOME keeps a test run's settings, models and transcripts apart from the real ones.
@@ -30,12 +31,15 @@ const settings = Settings.create(userData);
 const store = Store.create(() => settings.dataDir());
 // The person's word list. It has no editor yet; a word-list.json in userData is read when it is there.
 const words = () => { try { return JSON.parse(fs.readFileSync(path.join(userData, 'word-list.json'), 'utf8')); } catch { return []; } };
-let win = null;
+let win = null, settingsWin = null;
 const send = (channel, data) => { if (win && !win.isDestroyed()) win.webContents.send(channel, data); };
+const broadcast = (channel, data) => { for (const w of BrowserWindow.getAllWindows()) if (!w.isDestroyed()) w.webContents.send(channel, data); };
 const emit = job => send('job', summary(job));
 // The speech engines inside the app, and the one-time download of their models.
 const speech = Speech.create({userData, fetch: (url, opts) => net.fetch(url, opts), onState: s => send('speech', s)});
-const pipeline = Pipeline.create({store, speech, words, emit});
+// Claude's suggestions: off until the person turns them on, then through their own Claude Code or API key.
+const claude = Claude.create({userData, settings, safeStorage, open: file => shell.openPath(file)});
+const pipeline = Pipeline.create({store, speech, words, emit, ai: claude});
 
 const TYPES = {'.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.svg': 'image/svg+xml', '.png': 'image/png',
   '.mp3': 'audio/mpeg', '.m4a': 'audio/mp4', '.aac': 'audio/aac', '.wav': 'audio/wav', '.aif': 'audio/aiff', '.aiff': 'audio/aiff',
@@ -112,8 +116,12 @@ function openJob(id) {
     speakers: w ? w.transcript.speakers || [] : [],
     aiSpeakers: w?.claude?.speakers || [],
     speakerFixes: w?.claude?.speakerFixes || [],
+    // Which Claude made the suggestions on screen, and how it was reached.
+    ai: w?.claude?.meta ? {via: w.claude.meta.via, model: w.claude.meta.model, at: w.claude.meta.at} : null,
     stats: w ? w.stats : null,
-    review,
+    // The run of suggestions these decisions were made on, so a save made while Claude was answering again
+    // never carries an old decision onto a new suggestion.
+    review: {...review, aiRun: w?.claude?.meta?.run ?? null},
   };
 }
 
@@ -159,7 +167,8 @@ function ipc() {
     return canceled ? [] : filePaths;
   });
   on('review', (id, review) => {
-    store.writeJson(id, 'review.json', review);
+    const run = store.readJson(id, 'ai.json', {})?.meta?.run ?? null;
+    store.writeJson(id, 'review.json', (review?.aiRun ?? null) === run ? review : {...withoutAi(review), aiRun: run});
     const job = store.get(id);
     if (job) emit(job);
     return true;
@@ -175,13 +184,49 @@ function ipc() {
   on('reveal', id => { shell.showItemInFolder(store.file(id, 'job.json')); return true; });
   on('speech', () => speech.status());
   on('speechPrepare', () => { speech.prepare().catch(() => {}); return speech.state(); });
+  // Claude's suggestions: the choice in Settings, the person's key, their Claude Code sign-in.
+  on('aiMode', () => settings.get().ai);
+  on('aiStatus', () => claude.status());
+  on('aiSet', async patch => {
+    settings.set({...(patch?.ai !== undefined ? {ai: patch.ai} : {}), ...(patch?.aiModel !== undefined ? {aiModel: patch.aiModel} : {})});
+    broadcast('ai', settings.get().ai);
+    return claude.status();
+  });
+  on('aiSaveKey', async key => ({...await claude.saveKey(key), status: await claude.status()}));
+  on('aiForgetKey', async () => { claude.forgetKey(); return claude.status(); });
+  on('aiSignIn', () => claude.signIn());
+  on('aiKeyPage', () => shell.openExternal(KEY_PAGE));
+  on('settings', () => { showSettings(); return true; });
+}
+
+// Where a person makes an Anthropic API key. Fixed here, so the window can open this page and no other.
+const KEY_PAGE = 'https://platform.claude.com/settings/keys';
+
+// Settings is its own window, as on any Mac app: ⌘, opens it, and it stays open beside the transcripts.
+function showSettings() {
+  if (settingsWin && !settingsWin.isDestroyed()) { settingsWin.show(); settingsWin.focus(); return; }
+  settingsWin = new BrowserWindow({
+    width: 560, height: 600, resizable: false, minimizable: false, maximizable: false, fullscreenable: false,
+    title: 'Settings', show: false, backgroundColor: nativeTheme.shouldUseDarkColors ? '#1E1E1E' : '#FFFFFF',
+    webPreferences: {preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true, nodeIntegration: false},
+  });
+  guard(settingsWin);
+  settingsWin.loadURL('app://ui/settings.html');
+  if (!snapshotDir) settingsWin.once('ready-to-show', () => settingsWin.show());
+  settingsWin.on('closed', () => { settingsWin = null; });
+}
+
+// A window of this app opens nothing else and goes nowhere else.
+function guard(w) {
+  w.webContents.setWindowOpenHandler(() => ({action: 'deny'}));
+  w.webContents.on('will-navigate', e => e.preventDefault());
 }
 
 function menu() {
   const tell = what => () => send('menu', what);
   Menu.setApplicationMenu(Menu.buildFromTemplate([
-    {role: 'appMenu', submenu: [{role: 'about'}, {type: 'separator'}, {role: 'hide'}, {role: 'hideOthers'}, {role: 'unhide'},
-      {type: 'separator'}, {role: 'quit'}]},
+    {role: 'appMenu', submenu: [{role: 'about'}, {type: 'separator'}, {label: 'Settings…', accelerator: 'Cmd+,', click: () => showSettings()},
+      {type: 'separator'}, {role: 'hide'}, {role: 'hideOthers'}, {role: 'unhide'}, {type: 'separator'}, {role: 'quit'}]},
     {label: 'File', submenu: [{label: 'Add Recording…', accelerator: 'Cmd+O', click: tell('add')},
       {label: 'Export Transcript…', accelerator: 'Cmd+E', click: tell('export')}, {type: 'separator'}, {role: 'close'}]},
     {role: 'editMenu'},
@@ -200,8 +245,7 @@ function createWindow() {
     backgroundColor: nativeTheme.shouldUseDarkColors ? '#1E1E1E' : '#FFFFFF',
     webPreferences: {preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true, nodeIntegration: false},
   });
-  win.webContents.setWindowOpenHandler(() => ({action: 'deny'}));
-  win.webContents.on('will-navigate', e => e.preventDefault());
+  guard(win);
   win.loadURL(designOnly ? 'app://ui/design.html' : 'app://ui/index.html');
   if (snapshotDir) {
     // A screenshot run reports the window's warnings and errors, so a broken screen shows in the output too.
@@ -218,7 +262,7 @@ async function snapshots(w, dir) {
   const js = code => w.webContents.executeJavaScript(code);
   try {
     await wait(1500);
-    if (!designOnly) await appShots();
+    if (!designOnly) { await appShots(); await settingsShots(); }
     await designShots();
   } finally { app.quit(); }
 
@@ -238,6 +282,19 @@ async function snapshots(w, dir) {
       await js('window.__test && window.__test.home()'); await wait(500); await shot(`${theme}-4-home`);
       if (id) { await js(`window.__test.open(${JSON.stringify(id)})`); await wait(700); }
     }
+  }
+
+  // The Settings window as this test home's settings leave it, in both themes.
+  async function settingsShots() {
+    showSettings();
+    await wait(2500);
+    for (const theme of ['light', 'dark']) {
+      nativeTheme.themeSource = theme;
+      await wait(400);
+      fs.mkdirSync(dir, {recursive: true});
+      fs.writeFileSync(path.join(dir, `${theme}-5-settings.png`), (await settingsWin.webContents.capturePage()).toPNG());
+    }
+    settingsWin.close();
   }
 
   // The primitives page in both themes, a screen at a time. Hover, press and focus are forced on the elements
@@ -266,6 +323,8 @@ async function snapshots(w, dir) {
 }
 
 app.on('second-instance', () => showWindow());
+// Claude Code answering when the app quits is stopped with it; the step starts again on the next launch.
+app.on('will-quit', () => claude.stop());
 
 function showWindow() {
   if (!win || win.isDestroyed()) return createWindow();

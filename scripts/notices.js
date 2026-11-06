@@ -3,6 +3,7 @@
 //     puts inside the app beside this file),
 //   - the Swift packages compiled into the speech helper, read from native/speech/Package.resolved and the
 //     checkouts in native/speech/.build,
+//   - the npm packages the app ships (dependencies, not devDependencies), read from package-lock.json,
 //   - the speech models the app downloads on first launch (not part of this repo or the app).
 //
 //   npm run notices     after npm install and npm run speech, and again whenever a dependency changes
@@ -88,6 +89,20 @@ function main() {
     if (!files.length) throw new Error(`No license file found for ${pin.identity}.`);
     parts.push(section(`${dir} ${version}`, [pin.location.replace(/\.git$/, ''), '', 'Compiled into the speech helper.', ...(NOTES[dir] ? ['', NOTES[dir]] : [])],
       files, path.join(checkouts, dir)));
+  }
+  // The npm packages inside the app: package-lock.json's entries that are not only for building.
+  const lock = JSON.parse(read(path.join(root, 'package-lock.json')));
+  for (const [key, info] of Object.entries(lock.packages || {})) {
+    if (!key || info.dev || info.devOptional) continue;
+    const dir = path.join(root, key);
+    if (!fs.existsSync(path.join(dir, 'package.json'))) throw new Error(`${key} is missing. Run npm ci first.`);
+    const pkg = JSON.parse(read(path.join(dir, 'package.json')));
+    const files = licenseFiles(dir);
+    if (!files.length && !pkg.license) throw new Error(`No license found for ${pkg.name}.`);
+    const repo = String(pkg.repository?.url || pkg.repository || pkg.homepage || `https://www.npmjs.com/package/${pkg.name}`)
+      .replace(/^git\+/, '').replace(/\.git$/, '').replace(/^github:/, 'https://github.com/');
+    const bare = files.length ? [] : ['', `The package includes no license text; its package.json declares the ${pkg.license} license.`];
+    parts.push(section(`${pkg.name} ${pkg.version}`, [repo, '', `npm package (${pkg.license}), shipped inside the app.`, ...bare], files, dir));
   }
   parts.push(MODELS);
   fs.writeFileSync(out, parts.join('\n'));

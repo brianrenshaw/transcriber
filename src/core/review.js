@@ -298,5 +298,16 @@ function progress(work, review) {
 
 const emptyReview = () => ({flags: {}, edits: {}, headings: {}, names: {}, turns: {}, speakers: {}, quotes: {}});
 
+// New suggestions from Claude replace the old ones, so every decision about the old ones goes with them: a
+// flag settled with Claude's reading, and Claude's edits, headings, names and speaker checks. The person's
+// own choices stay (an engine's reading, their own words, their edits, the names they typed).
+function withoutAi(review = {}) {
+  const r = {...emptyReview(), ...review};
+  return {...r,
+    flags: Object.fromEntries(Object.entries(r.flags).filter(([, d]) => d?.choice !== 'claude')),
+    edits: Object.fromEntries(Object.entries(r.edits).filter(([id]) => !/^e\d+$/.test(id))),
+    headings: {}, names: {}, turns: {}};
+}
+
 module.exports = {items, baseItems, resolution, isDone, decisionFor, paragraphStarts, isConversation, speakerName, segmentSpeakers, turns,
-  assemble, spanText, spanPieces, progress, emptyReview, GROUPS, groupOf};
+  assemble, spanText, spanPieces, progress, emptyReview, withoutAi, GROUPS, groupOf};

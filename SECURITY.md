@@ -7,7 +7,8 @@ Say what you found, how to make it happen, and which version of Transcriber you 
 
 ## What the app does
 
-Recordings and transcripts stay on your Mac. The only thing the app downloads is the speech models.
+Recordings and transcripts stay on your Mac. The only thing the app downloads is the speech models. The only
+thing it sends anywhere is a transcript's text, to Anthropic, and only when you turn on Claude's suggestions.
 
 **The models.** Every model file comes from one fixed commit of its Hugging Face repo, listed with its size and
 SHA-256 in `src/main/models.json`. The app downloads each file itself, hashes it as it arrives, and keeps it only
@@ -15,6 +16,20 @@ if it matches; a file that does not match is deleted, and the download stops. Th
 the app has checked: it never downloads anything, and FluidAudio's own downloader inside it points at an address
 that cannot resolve, so a missing file fails the job instead of being fetched unchecked. `scripts/models.js`
 writes the list, and checks each small file against the git id its commit names.
+
+**Claude's suggestions.** They are off until you choose Claude Code or an API key in Settings. Then, after the
+two engines finish, the app sends Claude the transcript's text, the places the engines disagree, your word list
+and the names you typed when adding the recording. It never sends the audio. Claude's answer is held as
+suggestions in `ai.json`, and none of them goes into the text until you accept it.
+
+- *Claude Code* runs the `claude` command already installed on your Mac, signed in to your own account. The app
+  removes the variables that would point it at an API key or a cloud provider, and runs it with no tools, no
+  settings files and no saved session, in an empty folder of its own. The app never sees your Claude password:
+  the Sign in button opens Terminal on a script you can read, which runs Anthropic's installer if Claude Code is
+  missing and then `claude auth login`.
+- *An API key* is checked with Anthropic once, then kept in the app's data folder encrypted by macOS (Electron's
+  `safeStorage`, whose secret is in your keychain). The app sends it only to `https://api.anthropic.com`, an
+  address fixed in the code, so no setting or variable can send it elsewhere. Forget key deletes it.
 
 **The window.** The page runs sandboxed, with context isolation and no Node. Its content security policy allows
 only the app's own files. It cannot navigate away or open new windows, and every permission it asks for

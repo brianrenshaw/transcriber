@@ -6,7 +6,11 @@ const path = require('node:path');
 
 const DEFAULTS = {
   dataDir: '',             // where transcripts live; empty: <userData>/Transcripts
+  ai: 'off',               // Claude's suggestions: off, claude-code (the person's own sign-in) or api-key (their own key)
+  aiModel: '',             // empty: Claude Code's own default, or the API's default model
 };
+// The values a setting may take, where it has a fixed set; anything else keeps the setting as it was.
+const CHOICES = {ai: ['off', 'claude-code', 'api-key']};
 
 function create(userData) {
   const file = path.join(userData, 'settings.json');
@@ -16,7 +20,9 @@ function create(userData) {
     get: () => ({...current}),
     dataDir: () => current.dataDir || path.join(userData, 'Transcripts'),
     set(patch) {
-      current = {...current, ...Object.fromEntries(Object.entries(patch).filter(([k]) => k in DEFAULTS).map(([k, v]) => [k, String(v ?? '').trim()]))};
+      const clean = Object.entries(patch).filter(([k]) => k in DEFAULTS).map(([k, v]) => [k, String(v ?? '').trim()])
+        .filter(([k, v]) => !CHOICES[k] || CHOICES[k].includes(v));
+      current = {...current, ...Object.fromEntries(clean)};
       fs.mkdirSync(userData, {recursive: true});
       const tmp = `${file}.${process.pid}.tmp`;
       fs.writeFileSync(tmp, JSON.stringify(current, null, 2));

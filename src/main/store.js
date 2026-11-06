@@ -12,7 +12,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 // 'download' is done for a file from this Mac; it is there so a link can fill it in later.
-const STEPS = ['download', 'parakeet', 'whisper', 'compare'];
+const STEPS = ['download', 'parakeet', 'whisper', 'compare', 'ai'];
 const AUDIO = new Set(['.mp3', '.m4a', '.wav', '.aac', '.aif', '.aiff', '.flac', '.ogg', '.opus', '.mp4', '.mov', '.m4v']);
 
 function create(rootFn) {

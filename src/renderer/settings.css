@@ -1,0 +1,26 @@
+/* The Settings window: one pane, the window's grey, with the choices on a white panel as in the transcript. */
+
+body.settings { overflow: auto; background: var(--bg); }
+.pane { padding: var(--sp-5) var(--sp-6) var(--sp-6); max-width: 560px; }
+.pane h1 { font: 700 var(--fs-h2)/1.3 var(--serif); color: var(--text-strong); margin: 0 0 var(--sp-2); }
+.pane .lede { margin: 0 0 var(--sp-4); color: var(--text); font-size: var(--fs-body); max-width: 62ch; }
+.pane .seg { margin-bottom: var(--sp-4); }
+
+.panel-box { background: var(--surface); border-radius: var(--r-m); box-shadow: var(--elev-0); padding: var(--sp-4); display: grid; gap: var(--sp-3); }
+.panel-box p { margin: 0; }
+.row { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: var(--sp-3); align-items: center; }
+.row > .cap { color: var(--text-muted); font-size: var(--fs-note); }
+.line { display: flex; gap: var(--sp-2); align-items: center; flex-wrap: wrap; min-width: 0; }
+.line .link-input { flex: 1; min-width: 180px; }
+.status { display: flex; gap: var(--sp-2); align-items: baseline; }
+.status .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--text-faint); transform: translateY(-1px); }
+.status.good .dot { background: var(--success); }
+.status.bad .dot { background: var(--danger); }
+.hint { color: var(--text-muted); font-size: var(--fs-note); }
+.err { color: var(--danger); font-size: var(--fs-note); }
+select.link-input { appearance: auto; padding: 5px var(--sp-2); }
+.privacy { margin-top: var(--sp-4); color: var(--text-muted); font-size: var(--fs-note); max-width: 62ch; display: grid; gap: var(--sp-2); }
+.privacy p { margin: 0; }
+.link { border: 0; background: none; padding: 0; color: var(--accent); cursor: default; text-decoration: underline; text-underline-offset: 2px; }
+.link:hover { color: var(--accent-hover); }
+.link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
