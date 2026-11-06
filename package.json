@@ -1,6 +1,6 @@
 {
   "name": "transcriber",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "license": "MIT",
   "private": true,
   "description": "Local Mac transcription you can trust: two engines, every disagreement flagged, and a review screen synced to the audio.",

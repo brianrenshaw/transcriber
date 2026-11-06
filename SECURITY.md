@@ -31,7 +31,7 @@ JavaScript engine's compiler; the speech helper gets none.
 A release's notes give the zip's SHA-256. After downloading:
 
 ```bash
-shasum -a 256 ~/Downloads/Transcriber-0.1.0.zip
+shasum -a 256 ~/Downloads/Transcriber-*.zip
 ```
 
 After moving the app to Applications:
@@ -47,6 +47,7 @@ It should say `source=Notarized Developer ID`. A copy that was changed after sig
 On the maintainer's Mac, never in CI, so the signing key stays in that Mac's keychain:
 
 1. A clean checkout of the release's tag.
-2. `npm ci`, `npm run speech` and `npm test`.
-3. `npm run share`, which signs, notarizes and checks the fuses.
+2. `npm ci` and `npm test`.
+3. `npm run share`, which builds the speech helper, signs, notarizes and checks the fuses. It builds the
+   helper in the user's private cache folder, so no copy of the app carries the builder's name or folders.
 4. The zip goes on the GitHub release, with its SHA-256 in the notes.

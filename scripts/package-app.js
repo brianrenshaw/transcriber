@@ -26,7 +26,12 @@ const pkg = require(path.join(root, 'package.json'));
 const electronVersion = require(path.join(root, 'node_modules', 'electron', 'package.json')).version;
 const NAME = 'Transcriber';
 const BUNDLE_ID = process.env.TRANSCRIBER_BUNDLE_ID || 'io.github.brianrenshaw.transcriber';
-const HELPER = path.join(root, 'native', 'speech', '.build', 'release', 'transcriber-speech');
+// The helper is built outside the checkout, in this user's private cache folder (/var/folders/<id>/C). Swift
+// writes the build folder's absolute path into the helper, as the place a package looks for its resource files,
+// and a checkout's path would carry the builder's user name and folder names into every copy of the app. This
+// path names no one, and on another Mac only an administrator could create it.
+const SPEECH_BUILD = path.join(execFileSync('/usr/bin/getconf', ['DARWIN_USER_CACHE_DIR'], {encoding: 'utf8'}).trim(), 'transcriber-speech-build');
+const HELPER = path.join(SPEECH_BUILD, 'release', 'transcriber-speech');
 const ENTITLEMENTS = path.join(root, 'build', 'entitlements.plist');
 const ICON = path.join(root, 'build', 'icon.icns');
 const NOTARY_PROFILE = process.env.TRANSCRIBER_NOTARY_PROFILE || 'transcriber';
@@ -89,7 +94,7 @@ async function build() {
   // Electron fetches its own binary the first time it is asked for, not at npm ci. The build takes Chromium's
   // licenses from it, so a clean checkout fetches it here.
   require('electron');
-  execFileSync('/usr/bin/swift', ['build', '-c', 'release', '--package-path', path.join(root, 'native', 'speech')], {stdio: 'inherit'});
+  execFileSync('/usr/bin/swift', ['build', '-c', 'release', '--package-path', path.join(root, 'native', 'speech'), '--scratch-path', SPEECH_BUILD], {stdio: 'inherit'});
   const out = path.join(root, 'out', share ? 'share-build' : 'app');
   if (sign) console.log(`Signing as ${identity}; Apple's notarization takes a few minutes.`);
   const [built] = await packager({
