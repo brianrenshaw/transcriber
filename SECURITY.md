@@ -31,7 +31,7 @@ JavaScript engine's compiler; the speech helper gets none.
 A release's notes give the zip's SHA-256. After downloading:
 
 ```bash
-shasum -a 256 "Transcriber 0.1.0.zip"
+shasum -a 256 ~/Downloads/Transcriber-0.1.0.zip
 ```
 
 After moving the app to Applications:

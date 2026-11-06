@@ -124,7 +124,7 @@ async function build() {
     // A zip that keeps the app's signature, its notarization ticket and its permissions intact.
     const dir = path.join(root, 'out', 'share');
     fs.mkdirSync(dir, {recursive: true});
-    const zip = path.join(dir, `${NAME} ${pkg.version}.zip`);
+    const zip = path.join(dir, `${NAME}-${pkg.version}.zip`);
     fs.rmSync(zip, {force: true});
     execFileSync('/usr/bin/ditto', ['-c', '-k', '--sequesterRsrc', '--keepParent', app, zip]);
     console.log(`Built ${zip} (${(fs.statSync(zip).size / 1e6).toFixed(0)} MB)${sign ? ', signed and notarized' : ', unsigned'}`);

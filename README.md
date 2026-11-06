@@ -6,7 +6,7 @@ listening to the whole recording again.
 
 Everything runs locally on Apple silicon. Nothing is uploaded.
 
-It is an open-source project you build and run yourself, not a product for sale. A later version will add an
+It is an open-source project, not a product for sale. A later version will add an
 optional AI pass that suggests readings for the flagged places, run on your own Claude Code sign-in or API key.
 You decide every change; a suggestion never goes into the text until you accept it.
 
@@ -24,6 +24,13 @@ edit in groups. ⌘E exports the reviewed text as `.txt` or `.md`.
 
 Still to come: a library with search, a word-list editor (a `word-list.json` in the app's data folder is read
 if it is there), settings, the AI pass, SRT, VTT and DOCX export, recording, and batch work.
+
+## Download
+
+Download `Transcriber-<version>.zip` from the [latest release](https://github.com/brianrenshaw/transcriber/releases/latest),
+open it, and move Transcriber to Applications. It needs a Mac with Apple silicon on macOS 14 or later. The app is
+signed with a Developer ID and notarized by Apple, and [SECURITY.md](SECURITY.md) shows how to check the download.
+The first launch downloads the speech models, about 1.1 GB.
 
 ## Build and run
 
