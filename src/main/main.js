@@ -1,7 +1,7 @@
 // The Electron main process: the window, the menu, the app:// protocol that serves the interface and the
 // recordings, and the handlers the window calls through preload.js.
 
-const {app, BrowserWindow, Menu, dialog, ipcMain, nativeTheme, protocol, screen, shell} = require('electron');
+const {app, BrowserWindow, Menu, dialog, ipcMain, nativeTheme, net, protocol, screen, session, shell} = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
 const {Readable} = require('node:stream');
@@ -34,7 +34,7 @@ let win = null;
 const send = (channel, data) => { if (win && !win.isDestroyed()) win.webContents.send(channel, data); };
 const emit = job => send('job', summary(job));
 // The speech engines inside the app, and the one-time download of their models.
-const speech = Speech.create({userData, onState: s => send('speech', s)});
+const speech = Speech.create({userData, fetch: (url, opts) => net.fetch(url, opts), onState: s => send('speech', s)});
 const pipeline = Pipeline.create({store, speech, words, emit});
 
 const TYPES = {'.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.svg': 'image/svg+xml', '.png': 'image/png',
@@ -276,6 +276,10 @@ function showWindow() {
 
 app.whenReady().then(() => {
   if (!primary) return;
+  // The window asks for nothing: no camera, microphone, location, notifications or clipboard. Recording will
+  // allow the microphone here, and only that.
+  session.defaultSession.setPermissionRequestHandler((contents, permission, answer) => answer(false));
+  session.defaultSession.setPermissionCheckHandler(() => false);
   protocol.handle('app', handle);
   ipc();
   menu();

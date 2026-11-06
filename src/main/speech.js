@@ -1,20 +1,23 @@
 // The speech engines the app carries (native/speech, built into the app as Contents/Resources/transcriber-speech): Parakeet
 // with the speaker separation, and Whisper. Their models, about 1.1 GB, download once into <userData>/Models,
-// at first launch or the first time a recording needs them. There is one download at a time, and every job
-// waits on it.
+// at first launch or the first time a recording needs them, and the word list's model the first time a
+// recording has one. The app downloads them itself and checks every file (models.js); the helper only loads
+// them. There is one download at a time, and every job waits on it.
 
 const fs = require('node:fs');
 const path = require('node:path');
 const {spawn} = require('node:child_process');
+const Models = require('./models');
 
 const DEV_HELPER = path.join(__dirname, '..', '..', 'native', 'speech', '.build', 'release', 'transcriber-speech');
 const lastLine = s => s.trim().split('\n').filter(Boolean).pop() || '';
 
-function create({userData, onState = () => {}}) {
+// fetch: the app passes Electron's, which uses the Mac's proxy settings; the command line uses Node's.
+function create({userData, fetch = globalThis.fetch, onState = () => {}}) {
   const modelsDir = path.join(userData, 'Models');
   const listeners = new Set([onState]);
   let state = {state: 'unknown', progress: 0, what: '', error: null};
-  let preparing = null;
+  let queue = Promise.resolve();
 
   // The built app keeps the helper in Contents/Resources; a checkout runs the one `npm run speech` builds.
   function helper() {
@@ -50,39 +53,47 @@ function create({userData, onState = () => {}}) {
   async function status() {
     if (state.state === 'downloading') return {...state};
     if (!helper()) { set({state: 'unavailable'}); return {...state}; }
-    let ready = false;
-    await run(['status'], l => { if ('ready' in l) ready = Boolean(l.ready); }).catch(() => {});
+    const ready = !Models.missing(modelsDir).length;
     set({state: ready ? 'ready' : 'missing', progress: ready ? 1 : 0});
     return {...state};
   }
 
-  function prepare() {
-    if (!preparing) {
-      set({state: 'downloading', progress: 0, what: 'Parakeet', error: null});
-      preparing = run(['prepare'], l => { if (typeof l.progress === 'number') set({progress: l.progress, what: l.what}); })
-        .then(() => set({state: 'ready', progress: 1, what: ''}))
-        .catch(e => {
-          set({state: 'error', error: e.message});
-          throw new Error(`The speech engines could not be downloaded: ${e.message} Check the internet connection and try again.`);
-        })
-        .finally(() => { preparing = null; });
+  // need: 'always' for the engines, 'wordlist' for those and the word list's model. Downloads queue, so a
+  // second call waits for the first and then fetches only what is still missing.
+  async function download(need) {
+    if (!Models.missing(modelsDir, need).length) return;
+    set({state: 'downloading', progress: 0, what: '', error: null});
+    try {
+      await Models.ensure(modelsDir, {need, fetch, onProgress: p => set(p)});
+      set({state: 'ready', progress: 1, what: ''});
+    } catch (e) {
+      set({state: 'error', error: e.message});
+      throw new Error(e instanceof Models.Mismatch
+        ? `A speech model could not be used: ${e.message} Nothing of it was kept.`
+        : `The speech models could not be downloaded: ${e.message} Check the internet connection and try again.`);
     }
-    return preparing;
   }
 
-  async function ensure(onProgress) {
-    if (state.state !== 'ready' && (await status()).state === 'ready') return;
-    if (state.state === 'ready') return;
+  function prepare(need = 'always') {
+    const next = queue.catch(() => {}).then(() => download(need));
+    queue = next;
+    return next;
+  }
+
+  async function ensure(onProgress, need = 'always') {
+    if (!Models.missing(modelsDir, need).length) return;
     const follow = s => { if (s.state === 'downloading') onProgress?.(s); };
     listeners.add(follow);
-    try { await prepare(); } finally { listeners.delete(follow); }
+    try { await prepare(need); } finally { listeners.delete(follow); }
   }
 
   // engine: 'parakeet' or 'whisper'. count: how many people speak, when the person named them. vocab: the word
   // list as the engines take it (wordlist.vocabulary), written beside the transcript for the helper to read.
   // onProgress gets {what, progress} while models download and while it works.
   async function transcribe(engine, audio, outFile, {speakers = false, count = 0, vocab = null, onProgress} = {}) {
-    await ensure(s => onProgress?.({what: 'Download', progress: s.progress}));
+    // Only Parakeet rescores against the terms, with the second model.
+    const need = engine === 'parakeet' && vocab?.terms?.length ? 'wordlist' : 'always';
+    await ensure(s => onProgress?.({what: 'Download', progress: s.progress}), need);
     const tmp = outFile + '.tmp';
     fs.mkdirSync(path.dirname(outFile), {recursive: true});
     fs.rmSync(tmp, {force: true});

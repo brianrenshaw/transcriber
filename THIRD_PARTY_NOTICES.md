@@ -2541,9 +2541,10 @@ The full text of the Apache License, Version 2.0 follows.
 
 ## Speech models
 
-The speech helper downloads these models from Hugging Face on first launch, into the app's data folder. They
-are not part of this repository or the app. Each is a Core ML conversion of the original, modified for Apple
-silicon by the converter named.
+The app downloads these models from Hugging Face on first launch, into its data folder, each from a fixed commit
+and checked against the SHA-256 listed in `src/main/models.json`. They are not part of this repository or the
+app. Each is a Core ML conversion of the original, modified for Apple silicon by the converter named, except
+Whisper's tokenizer, which is used as OpenAI published it.
 
 | Model | Used for | Original | Core ML conversion | License |
 | --- | --- | --- | --- | --- |
@@ -2551,3 +2552,4 @@ silicon by the converter named.
 | Parakeet TDT-CTC 110M | spotting word-list terms (downloaded only when the word list has terms to boost) | NVIDIA, [nvidia/parakeet-tdt_ctc-110m](https://huggingface.co/nvidia/parakeet-tdt_ctc-110m) | Fluid Inference, [FluidInference/parakeet-ctc-110m-coreml](https://huggingface.co/FluidInference/parakeet-ctc-110m-coreml) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
 | pyannote Community-1 speaker diarization (segmentation, WeSpeaker embedding, PLDA) | telling the voices apart | pyannote, WeSpeaker and BUT Speech@FIT, [pyannote/speaker-diarization-community-1](https://huggingface.co/pyannote/speaker-diarization-community-1) | Fluid Inference, [FluidInference/speaker-diarization-coreml](https://huggingface.co/FluidInference/speaker-diarization-coreml) ([notice](https://huggingface.co/FluidInference/speaker-diarization-coreml/blob/main/NOTICE.md)) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
 | Whisper large-v3 turbo (openai_whisper-large-v3-v20240930_626MB) | the second transcription the first is checked against | OpenAI, [openai/whisper](https://github.com/openai/whisper) | Argmax, [argmaxinc/whisperkit-coreml](https://huggingface.co/argmaxinc/whisperkit-coreml) | MIT |
+| Whisper large-v3 tokenizer (tokenizer.json, tokenizer_config.json, config.json) | turning Whisper's tokens into words | OpenAI, [openai/whisper-large-v3](https://huggingface.co/openai/whisper-large-v3) | none, used as published | [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0) |

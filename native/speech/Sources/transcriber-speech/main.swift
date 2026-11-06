@@ -1,13 +1,14 @@
 // transcriber-speech: the speech engines the app carries inside it, run as a separate process.
 //
-//   transcriber-speech prepare  --models <dir>                       download whatever is missing, reporting progress
-//   transcriber-speech status   --models <dir>                       {"ready": true|false}
 //   transcriber-speech parakeet --models <dir> [--speakers [--speaker-count N]] [--vocab <vocab.json>] <audio> <out.json>
 //   transcriber-speech whisper  --models <dir> [--vocab <vocab.json>] <audio> <out.json>
 //
+// The app downloads the models into <dir> and checks every file against the list it carries (src/main/models.js);
+// this helper only loads them, and never downloads anything.
+//
 // vocab.json is your word list as the engines take it: {"prompt": "Keller, Joyce.", "terms": [{"text",
 // "aliases"}]}. Whisper reads the prompt as though it were the text just before; Parakeet's words are rescored
-// against the terms (FluidAudio's CTC keyword boosting, with a small second model downloaded the first time).
+// against the terms (FluidAudio's CTC keyword boosting, with a small second model).
 //
 // The output is the JSON MacWhisper's CLI writes, so the app reads both the same way:
 //   {"segments": [{"start", "end", "text", "words": [{"start", "end", "text"}], "speaker"?}], "text"}
@@ -22,12 +23,14 @@ import FluidAudio
 import WhisperKit
 
 let whisperVariant = "openai_whisper-large-v3-v20240930_626MB"
-let whisperRepo = "argmaxinc/whisperkit-coreml"
+
+// FluidAudio fetches a model from Hugging Face's main branch, unchecked, whenever it finds a file missing. Its
+// registry points at a name that cannot resolve, so a missing file fails the job instead of being fetched.
+ModelRegistry.baseURL = "https://models-come-from-the-app.invalid"
 
 struct Word: Codable { var start: Int; var end: Int; var text: String }
 struct Segment: Codable { var start: Int; var end: Int; var text: String; var words: [Word]; var speaker: String? }
 struct Output: Codable { var segments: [Segment]; var text: String }
-struct Marker: Codable { var whisper: String }
 struct VocabTerm: Codable { var text: String; var aliases: [String]? }
 struct Vocab: Codable { var prompt: String?; var terms: [VocabTerm]? }
 
@@ -64,45 +67,21 @@ while let a = rest.next() {
   default: if command.isEmpty { command = a } else { positional.append(a) }
   }
 }
-guard let models = modelsDir else { fail("usage: transcriber-speech prepare|status|parakeet|whisper --models <dir> [--speakers] [audio out.json]") }
+guard let models = modelsDir else { fail("usage: transcriber-speech parakeet|whisper --models <dir> [--speakers] <audio> <out.json>") }
 
-// Each engine keeps its models in its own folder; ready.json is written once all three are in place.
-// (FluidAudio files Parakeet beside the folder it is given, under the model's own name.)
+// Where the app puts each model (the `to` folders in src/main/models.json). FluidAudio finds Parakeet and the
+// CTC model beside the folder it is given, under the model's own name.
 let parakeetDir = models.appendingPathComponent("parakeet", isDirectory: true)
 let speakersDir = models.appendingPathComponent("speakers", isDirectory: true)
-let whisperBase = models.appendingPathComponent("whisper", isDirectory: true)
-let markerFile = models.appendingPathComponent("ready.json")
+let whisperDir = models.appendingPathComponent("whisper", isDirectory: true).appendingPathComponent(whisperVariant, isDirectory: true)
+let tokenizerDir = models.appendingPathComponent("whisper", isDirectory: true).appendingPathComponent("tokenizer", isDirectory: true)
 let ctcDir = models.appendingPathComponent("ctc", isDirectory: true).appendingPathComponent("parakeet-ctc-110m-coreml", isDirectory: true)
 
 let vocab: Vocab? = vocabFile.flatMap { try? Data(contentsOf: $0) }.flatMap { try? JSONDecoder().decode(Vocab.self, from: $0) }
 
 func warn(_ message: String) { FileHandle.standardError.write(Data(("warning: " + message + "\n").utf8)) }
 
-func whisperFolder() -> URL? {
-  guard let data = try? Data(contentsOf: markerFile), let m = try? JSONDecoder().decode(Marker.self, from: data) else { return nil }
-  let url = models.appendingPathComponent(m.whisper, isDirectory: true)
-  return FileManager.default.fileExists(atPath: url.appendingPathComponent("AudioEncoder.mlmodelc").path) ? url : nil
-}
-
-func ready() -> Bool {
-  whisperFolder() != nil && FileManager.default.fileExists(atPath: speakersDir.path)
-}
-
-// One bar for all three downloads, weighted by size: Parakeet about 480 MB, Whisper about 630 MB, speakers about 30 MB.
-func prepare() async throws {
-  try FileManager.default.createDirectory(at: models, withIntermediateDirectories: true)
-  emit("Parakeet", 0)
-  _ = try await AsrModels.download(to: parakeetDir, version: .v3, progressHandler: { p in emit("Parakeet", p.fractionCompleted * 0.42) })
-  emit("Whisper", 0.42)
-  let folder = try await WhisperKit.download(variant: whisperVariant, downloadBase: whisperBase, from: whisperRepo,
-    progressCallback: { p in emit("Whisper", 0.42 + p.fractionCompleted * 0.55) })
-  emit("Speakers", 0.97)
-  let diarizer = OfflineDiarizerManager(config: .default)
-  try await diarizer.prepareModels(directory: speakersDir)
-  let relative = folder.standardizedFileURL.path.replacingOccurrences(of: models.standardizedFileURL.path + "/", with: "")
-  try JSONEncoder().encode(Marker(whisper: relative)).write(to: markerFile, options: .atomic)
-  emit("Ready", 1)
-}
+func present(_ dirs: URL...) -> Bool { dirs.allSatisfy { FileManager.default.fileExists(atPath: $0.path) } }
 
 func write(_ segments: [Segment], to out: URL) throws {
   let text = segments.map(\.text).joined(separator: " ")
@@ -351,11 +330,11 @@ func whisperSegments(_ results: [TranscriptionResult], offset: Int = 0, echo: St
 let HOLE = 6000  // ms without a word that Whisper is asked to listen to again
 
 func runWhisper(_ audio: URL, _ out: URL) async throws {
-  guard let folder = whisperFolder() else { fail("The Whisper model is not downloaded yet.") }
+  // The tokenizer is the app's copy too: without tokenizerFolder WhisperKit fetches its own into ~/Documents.
+  let kit = try await WhisperKit(WhisperKitConfig(modelFolder: whisperDir.path, tokenizerFolder: tokenizerDir, verbose: false,
+    logLevel: .error, prewarm: false, load: true, download: false))
   let samples = try AudioConverter().resampleAudioFile(audio)
   emit("Whisper", 0.05)
-  let kit = try await WhisperKit(WhisperKitConfig(modelFolder: folder.path, verbose: false, logLevel: .error,
-    prewarm: false, load: true, download: false))
   let plain = DecodingOptions(verbose: false, task: .transcribe, language: "en", temperature: 0, usePrefillPrompt: true,
     skipSpecialTokens: true, wordTimestamps: true, chunkingStrategy: .vad)
   var options = plain
@@ -391,19 +370,16 @@ func runWhisper(_ audio: URL, _ out: URL) async throws {
 
 do {
   switch command {
-  case "status":
-    print("{\"ready\":\(ready())}")
-  case "prepare":
-    try await prepare()
   case "parakeet", "whisper":
     guard positional.count == 2 else { fail("usage: transcriber-speech \(command) --models <dir> <audio> <out.json>") }
-    if !ready() { try await prepare() }
+    let needs = command == "parakeet" ? [models.appendingPathComponent("parakeet-tdt-0.6b-v3"), speakersDir] : [whisperDir, tokenizerDir]
+    guard needs.allSatisfy({ present($0) }) else { fail("The speech models are not downloaded yet.") }
     let audio = URL(fileURLWithPath: positional[0]), out = URL(fileURLWithPath: positional[1])
     guard FileManager.default.fileExists(atPath: audio.path) else { fail("No recording at \(audio.path)") }
     if command == "parakeet" { try await runParakeet(audio, out, withSpeakers: speakers, count: speakerCount) }
     else { try await runWhisper(audio, out) }
   default:
-    fail("Unknown command \(command). Use prepare, status, parakeet or whisper.")
+    fail("Unknown command \(command). Use parakeet or whisper.")
   }
 } catch {
   fail("\(error.localizedDescription)")

@@ -19,6 +19,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const {packager} = require('@electron/packager');
+const {flipFuses, getCurrentFuseWire, FuseVersion, FuseV1Options, FuseState} = require('@electron/fuses');
 
 const root = path.join(__dirname, '..');
 const pkg = require(path.join(root, 'package.json'));
@@ -32,6 +33,42 @@ const NOTARY_PROFILE = process.env.TRANSCRIBER_NOTARY_PROFILE || 'transcriber';
 
 const share = process.argv.includes('--share');
 const sign = share && !process.argv.includes('--adhoc');
+
+// Electron's switches for what the built app can be made to do from outside it, set before it is signed.
+// Off: running it as plain Node (ELECTRON_RUN_AS_NODE), NODE_OPTIONS and the --inspect flags, any of which would
+// let someone run their own script under this app's signature and whatever permissions people gave it. On: the
+// app loads only from its app.asar, and refuses one that no longer matches the hash in its Info.plist.
+// Cookie encryption stays off: the app keeps no cookies, and on a copy someone builds for themselves it would
+// ask for the keychain again after every rebuild. Every fuse is named, so a new Electron one stops the build
+// until it is decided here.
+const FUSES = {
+  [FuseV1Options.RunAsNode]: false,
+  [FuseV1Options.EnableCookieEncryption]: false,
+  [FuseV1Options.EnableNodeOptionsEnvironmentVariable]: false,
+  [FuseV1Options.EnableNodeCliInspectArguments]: false,
+  [FuseV1Options.EnableEmbeddedAsarIntegrityValidation]: true,
+  [FuseV1Options.OnlyLoadAppFromAsar]: true,
+  [FuseV1Options.LoadBrowserProcessSpecificV8Snapshot]: false,
+  [FuseV1Options.GrantFileProtocolExtraPrivileges]: false,
+  [FuseV1Options.WasmTrapHandlers]: true,
+};
+
+// The packager copies the app into <Name>.app/Contents/Resources/app; the fuses are in the bundle's Electron.
+async function setFuses({buildPath}) {
+  const bundle = path.resolve(buildPath, '..', '..', '..');
+  if (!bundle.endsWith('.app')) throw new Error(`The fuses expected an app bundle above ${buildPath}`);
+  await flipFuses(bundle, {version: FuseVersion.V1, strictlyRequireAllFuses: true, resetAdHocDarwinSignature: true, ...FUSES});
+}
+
+async function checkFuses(app) {
+  const wire = await getCurrentFuseWire(app);
+  const wrong = Object.entries(FUSES).filter(([k, on]) => wire[k] !== (on ? FuseState.ENABLE : FuseState.DISABLE));
+  if (wrong.length) throw new Error(`Fuses not set in ${app}: ${wrong.map(([k]) => FuseV1Options[k]).join(', ')}`);
+}
+
+// Electron and its helpers get the JavaScript engine's one exception; the speech helper runs Core ML and needs
+// none, so it is signed with none.
+const signOptions = file => ({hardenedRuntime: true, entitlements: path.basename(file) === 'transcriber-speech' ? [] : ENTITLEMENTS});
 
 function developerId() {
   const out = execFileSync('/usr/bin/security', ['find-identity', '-v', '-p', 'codesigning'], {encoding: 'utf8'});
@@ -63,13 +100,15 @@ async function build() {
     extraResource: [HELPER, path.join(root, 'THIRD_PARTY_NOTICES.md'), path.join(root, 'node_modules', 'electron', 'dist', 'LICENSES.chromium.html')],
     // Only what the app runs; tests, scripts, the Swift sources and earlier builds stay behind.
     // replica/ (local planning notes, never committed) stays out; LICENSE and the notices ship.
-    ignore: [/^\/(test|scripts|out|build|native|replica|design|\.git|\.claude)(\/|$)/, /^\/src\/renderer\/design\.(html|css|js)$/, /^\/(README|CLAUDE|AGENTS)\.md$/, /^\/\.(gitignore|nvmrc|DS_Store)$/],
+    ignore: [/^\/(test|scripts|out|build|native|replica|design|\.git|\.claude)(\/|$)/, /^\/src\/renderer\/design\.(html|css|js)$/, /^\/(README|CLAUDE|AGENTS|SECURITY)\.md$/, /^\/\.(gitignore|nvmrc|DS_Store)$/],
+    afterCopy: [setFuses],
     ...(sign ? {
-      osxSign: {identity, optionsForFile: () => ({hardenedRuntime: true, entitlements: ENTITLEMENTS})},
+      osxSign: {identity, optionsForFile: signOptions},
       osxNotarize: {keychainProfile: NOTARY_PROFILE},
     } : {}),
   });
   const app = path.join(built, `${NAME}.app`);
+  await checkFuses(app);
   // Without a Developer ID, sign it for this Mac only.
   if (!sign) execFileSync('/usr/bin/codesign', ['--force', '--deep', '--sign', '-', app], {stdio: 'inherit'});
   else {

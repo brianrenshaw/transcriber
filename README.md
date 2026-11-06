@@ -42,8 +42,10 @@ npm start
 ```
 
 The first launch downloads the speech models, about 1.1 GB, into the app's data folder
-(`~/Library/Application Support/Transcriber`). Set `TRANSCRIBER_HOME=<folder>` to use another data folder,
-which keeps test runs away from your real transcripts.
+(`~/Library/Application Support/Transcriber`). Every file comes from a fixed commit on Hugging Face and is kept
+only if its SHA-256 matches the list in `src/main/models.json`; a recording with a word list also downloads a
+100 MB model the first time. `node scripts/models.js` moves the pins to newer models. Set
+`TRANSCRIBER_HOME=<folder>` to use another data folder, which keeps test runs away from your real transcripts.
 
 ```bash
 npm test
@@ -51,7 +53,9 @@ npm test
 
 `npm run app` builds `Transcriber.app` and installs it in Applications. `npm run share` builds a zip signed with
 your Developer ID and notarized by Apple; set `TRANSCRIBER_BUNDLE_ID` and `TRANSCRIBER_NOTARY_PROFILE` for your
-own copy (see `scripts/package-app.js`).
+own copy (see `scripts/package-app.js`). Both set Electron's fuses, so the built app cannot be run as plain Node
+and refuses an `app.asar` that has been changed. [SECURITY.md](SECURITY.md) has the rest, and how to report a
+problem.
 
 `node scripts/run-pipeline.js --home <folder> <recording>...` runs the three steps without the window and prints
 the words, the flags and how often the engines agreed. `npm run snapshot` renders the screens to PNGs in
@@ -62,11 +66,11 @@ the words, the flags and how often the engines agreed. `npm run snapshot` render
 | Path | What it is |
 | --- | --- |
 | `src/core/` | the review logic, free of Electron: `compare.js` (the two engines, word by word, using `sm.js`, a port of Python's difflib), `review.js` (flags, decisions, the reviewed text), `wordlist.js`, `text.js`, `ai.js` (placing an AI pass's answer on the transcript) |
-| `src/main/` | the main process: `main.js` (window, menus, the `app://` protocol, export), `store.js` (one folder per transcript), `pipeline.js` (the steps, one transcript at a time), `speech.js` (runs the helper), `settings.js`, `preload.js` (the window's only bridge) |
+| `src/main/` | the main process: `main.js` (window, menus, the `app://` protocol, export), `store.js` (one folder per transcript), `pipeline.js` (the steps, one transcript at a time), `speech.js` (runs the helper), `settings.js`, `models.js` (downloads the speech models and checks every file against `models.json`), `preload.js` (the window's only bridge) |
 | `src/renderer/` | the window: plain HTML, CSS and JavaScript |
-| `native/speech/` | `transcriber-speech`, the Swift helper that runs Parakeet (FluidAudio) and Whisper (WhisperKit) on Core ML |
-| `scripts/` | `package-app.js` (build the app), `run-pipeline.js` (the steps from the command line), `notices.js` (write the third-party notices) |
-| `test/` | `node --test` suites for `src/core` |
+| `native/speech/` | `transcriber-speech`, the Swift helper that runs Parakeet (FluidAudio) and Whisper (WhisperKit) on Core ML. It loads the models the app downloaded and never downloads anything itself |
+| `scripts/` | `package-app.js` (build the app), `models.js` (pin the speech models), `run-pipeline.js` (the steps from the command line), `notices.js` (write the third-party notices) |
+| `test/` | `node --test` suites for `src/core`, the model downloads and the design tokens |
 
 Each transcript is a folder: `job.json`, the audio, `asr/parakeet.json`, `asr/whisper.json`, `work.json` (the
 transcript and its flags) and `review.json` (your decisions). The folders are the truth; anything else is a cache.

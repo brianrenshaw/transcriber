@@ -1,12 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<!-- The hardened runtime's exceptions for a notarized build: Electron's JavaScript engine compiles code at run
-     time. Nothing here widens access to files, the camera or the microphone. -->
+<!-- The hardened runtime's one exception for a notarized build: Electron's JavaScript engine compiles code at run
+     time. Electron and its helpers get it; the speech helper gets none (scripts/package-app.js). Nothing here
+     opens files, the camera or the microphone. -->
 <plist version="1.0">
 <dict>
   <key>com.apple.security.cs.allow-jit</key>
-  <true/>
-  <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
   <true/>
 </dict>
 </plist>
