@@ -94,7 +94,12 @@ async function build() {
   // Electron fetches its own binary the first time it is asked for, not at npm ci. The build takes Chromium's
   // licenses from it, so a clean checkout fetches it here.
   require('electron');
-  execFileSync('/usr/bin/swift', ['build', '-c', 'release', '--package-path', path.join(root, 'native', 'speech'), '--scratch-path', SPEECH_BUILD], {stdio: 'inherit'});
+  // The checkout's own path goes in no copy either: the compiler records our source folder as native/speech,
+  // and the linker leaves out the debug symbol table, which would list it. Function names stay, so a crash
+  // report still reads.
+  const speech = path.join(root, 'native', 'speech');
+  execFileSync('/usr/bin/swift', ['build', '-c', 'release', '--package-path', speech, '--scratch-path', SPEECH_BUILD,
+    '-Xswiftc', '-file-prefix-map', '-Xswiftc', `${speech}=native/speech`, '-Xlinker', '-S'], {stdio: 'inherit'});
   const out = path.join(root, 'out', share ? 'share-build' : 'app');
   if (sign) console.log(`Signing as ${identity}; Apple's notarization takes a few minutes.`);
   const [built] = await packager({
