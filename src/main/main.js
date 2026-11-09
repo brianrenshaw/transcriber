@@ -10,6 +10,7 @@ const Store = require('./store');
 const Pipeline = require('./pipeline');
 const Speech = require('./speech');
 const Claude = require('./claude');
+const Updates = require('./updates');
 const {items, paragraphStarts, assemble, progress, emptyReview, withoutAi} = require('../core/review');
 
 app.setName('Transcriber');
@@ -40,6 +41,10 @@ const speech = Speech.create({userData, fetch: (url, opts) => net.fetch(url, opt
 // Claude's suggestions: off until the person turns them on, then through their own Claude Code sign-in.
 const claude = Claude.create({userData, settings, open: file => shell.openPath(file)});
 const pipeline = Pipeline.create({store, speech, words, emit, ai: claude});
+// A line in the window when a newer Transcriber is out. Download opens its page in the browser; the app installs
+// nothing itself.
+const updates = Updates.create({current: app.getVersion(), settings, fetch: (url, opts) => net.fetch(url, opts),
+  open: url => shell.openExternal(url), onChange: u => send('update', u)});
 
 const TYPES = {'.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.svg': 'image/svg+xml', '.png': 'image/png',
   '.mp3': 'audio/mpeg', '.m4a': 'audio/mp4', '.aac': 'audio/aac', '.wav': 'audio/wav', '.aif': 'audio/aiff', '.aiff': 'audio/aiff',
@@ -194,6 +199,10 @@ function ipc() {
   });
   on('aiSignIn', () => claude.signIn());
   on('settings', () => { showSettings(); return true; });
+  // A newer version: what to show, its page, and Dismiss.
+  on('update', () => updates.state());
+  on('updateOpen', () => { updates.open(); return true; });
+  on('updateSkip', () => { updates.skip(); return true; });
 }
 
 // Settings is its own window, as on any Mac app: ⌘, opens it, and it stays open beside the transcripts.
@@ -274,6 +283,9 @@ async function snapshots(w, dir) {
       await js('window.__test && window.__test.tab("changes")'); await wait(400); await shot(`${theme}-3-changes`);
       await js('window.__test && window.__test.tab("transcript")'); await wait(300);
       await js('window.__test && window.__test.home()'); await wait(500); await shot(`${theme}-4-home`);
+      // The line a newer version shows under the list.
+      await js('window.__test.update({version: "9.9.9"})'); await wait(300); await shot(`${theme}-6-new-version`);
+      await js('window.__test.update(null)');
       if (id) { await js(`window.__test.open(${JSON.stringify(id)})`); await wait(700); }
     }
   }
@@ -318,7 +330,7 @@ async function snapshots(w, dir) {
 
 app.on('second-instance', () => showWindow());
 // Claude Code answering when the app quits is stopped with it; the step starts again on the next launch.
-app.on('will-quit', () => claude.stop());
+app.on('will-quit', () => { claude.stop(); updates.stop(); });
 
 function showWindow() {
   if (!win || win.isDestroyed()) return createWindow();
@@ -342,6 +354,7 @@ app.whenReady().then(() => {
     // On a new Mac the models download straight away, so the first recording does not wait for them.
     speech.status().then(s => { if (s.state === 'missing') speech.prepare().catch(() => {}); });
     pipeline.resume();
+    updates.start();
   }
 });
 // Closing the window leaves the app running, so work in progress carries on; the Dock icon brings the window

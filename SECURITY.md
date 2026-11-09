@@ -7,8 +7,9 @@ Say what you found, how to make it happen, and which version of Transcriber you 
 
 ## What the app does
 
-Recordings and transcripts stay on your Mac. The only thing the app downloads is the speech models. The only
-thing it sends anywhere is a transcript's text, to Anthropic, and only when you turn on Claude's suggestions.
+Recordings and transcripts stay on your Mac. The only thing the app downloads is the speech models, and the
+only other thing it asks is whether a newer version is out. The only thing it sends anywhere is a transcript's
+text, to Anthropic, and only when you turn on Claude's suggestions.
 
 **The models.** Every model file comes from one fixed commit of its Hugging Face repo, listed with its size and
 SHA-256 in `src/main/models.json`. The app downloads each file itself, hashes it as it arrives, and keeps it only
@@ -16,6 +17,13 @@ if it matches; a file that does not match is deleted, and the download stops. Th
 the app has checked: it never downloads anything, and FluidAudio's own downloader inside it points at an address
 that cannot resolve, so a missing file fails the job instead of being fetched unchecked. `scripts/models.js`
 writes the list, and checks each small file against the git id its commit names.
+
+**New versions.** When the app starts, and once a day while it runs, it asks GitHub's API for this
+repository's latest release (`src/main/updates.js`). The request says only that it comes from Transcriber and
+which version; like any request, it shows GitHub your IP address. If the release is newer, a line under the
+list says so. Download opens the release's page in your browser, built from the release's tag so it is always a
+page of this repository. The app never downloads or installs a new version itself. Dismiss hides that
+version's line for good, and the next version's line still shows.
 
 **Claude's suggestions.** They are off until you choose Claude Code in Settings. Then, after the
 two engines finish, the app sends Claude the transcript's text, the places the engines disagree, your word list

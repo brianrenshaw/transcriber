@@ -8,6 +8,7 @@ const DEFAULTS = {
   dataDir: '',             // where transcripts live; empty: <userData>/Transcripts
   ai: 'off',               // Claude's suggestions: off, or claude-code (the person's own Claude Code sign-in)
   aiModel: '',             // empty: Claude Code's own default model
+  skippedVersion: '',      // a newer version the person dismissed, so its line stays away
 };
 // The values a setting may take, where it has a fixed set; anything else keeps the setting as it was.
 const CHOICES = {ai: ['off', 'claude-code']};

@@ -340,6 +340,9 @@ kbd { font: 700 var(--fs-label)/1 var(--sans); color: var(--text-muted); border:
 .setup-line { margin: 0 var(--sp-3) var(--sp-3); padding: var(--sp-2) var(--sp-3); border-radius: var(--r-m); background: var(--surface);
   box-shadow: var(--elev-0); font-size: var(--fs-note); color: var(--text); display: grid; gap: var(--sp-1); }
 .setup-line .btn { justify-self: start; padding: 2px var(--sp-2); margin-left: calc(-1 * var(--sp-2)); }
+/* Two buttons side by side, the first lined up with the text above. */
+.setup-line .acts { display: flex; gap: var(--sp-1); margin-left: calc(-1 * var(--sp-2)); }
+.setup-line .acts .btn { margin-left: 0; }
 
 .link-input.people { font-size: var(--fs-note); }
 

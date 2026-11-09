@@ -34,6 +34,10 @@ open it, and move Transcriber to Applications. It needs a Mac with Apple silicon
 signed with a Developer ID and notarized by Apple, and [SECURITY.md](SECURITY.md) shows how to check the download.
 The first launch downloads the speech models, about 1.1 GB.
 
+When a newer version is out, a line under the list says so, and Download opens its release page. Move the new
+Transcriber to Applications in place of the old one. Your transcripts, decisions, settings and speech models are
+kept in `~/Library/Application Support/Transcriber`, not in the app, so they are all still there.
+
 ## Build and run
 
 You need a Mac with Apple silicon on macOS 14 or later, Node 24, and Xcode or its command-line tools (for Swift).
@@ -86,11 +90,11 @@ its ··· menu. [SECURITY.md](SECURITY.md) says exactly what is sent.
 | Path | What it is |
 | --- | --- |
 | `src/core/` | the review logic, free of Electron: `compare.js` (the two engines, word by word, using `sm.js`, a port of Python's difflib), `review.js` (flags, decisions, the reviewed text), `wordlist.js`, `text.js`, `prompt.js` (what Claude is asked, and the shape of its answer), `ai.js` (placing Claude's answer on the transcript) |
-| `src/main/` | the main process: `main.js` (window, menus, the `app://` protocol, export), `store.js` (one folder per transcript), `pipeline.js` (the steps, one transcript at a time), `speech.js` (runs the helper), `settings.js`, `claude.js` (Claude's suggestions, through Claude Code), `models.js` (downloads the speech models and checks every file against `models.json`), `preload.js` (the window's only bridge) |
+| `src/main/` | the main process: `main.js` (window, menus, the `app://` protocol, export), `store.js` (one folder per transcript), `pipeline.js` (the steps, one transcript at a time), `speech.js` (runs the helper), `settings.js`, `claude.js` (Claude's suggestions, through Claude Code), `models.js` (downloads the speech models and checks every file against `models.json`), `updates.js` (asks GitHub whether a newer version is out), `preload.js` (the window's only bridge) |
 | `src/renderer/` | the window: plain HTML, CSS and JavaScript |
 | `native/speech/` | `transcriber-speech`, the Swift helper that runs Parakeet (FluidAudio) and Whisper (WhisperKit) on Core ML. It loads the models the app downloaded and never downloads anything itself |
 | `scripts/` | `package-app.js` (build the app), `models.js` (pin the speech models), `run-pipeline.js` (the steps from the command line), `notices.js` (write the third-party notices) |
-| `test/` | `node --test` suites for `src/core`, Claude's suggestions, the model downloads and the design tokens |
+| `test/` | `node --test` suites for `src/core`, Claude's suggestions, the model downloads, the new-version check and the design tokens |
 
 Each transcript is a folder: `job.json`, the audio, `asr/parakeet.json`, `asr/whisper.json`, `work.json` (the
 transcript and its flags), `ai.json` (Claude's suggestions, and which model made them) and `review.json` (your

@@ -27,4 +27,9 @@ contextBridge.exposeInMainWorld('desk', {
   aiSignIn: () => call('aiSignIn'),
   onAi: fn => ipcRenderer.on('ai', (_e, mode) => fn(mode)),
   settings: () => call('settings'),
+  // A newer version
+  update: () => call('update'),
+  updateOpen: () => call('updateOpen'),
+  updateSkip: () => call('updateSkip'),
+  onUpdate: fn => ipcRenderer.on('update', (_e, u) => fn(u)),
 });

@@ -1377,6 +1377,24 @@ function drawSpeech() {
 
 desk.onSpeech(s => { state.speech = s; drawSpeech(); });
 
+// ---------------------------------------------------------------- a newer version
+
+// A line under the list when a newer Transcriber is out. Download opens its page in the browser; Dismiss puts
+// this version's line away for good, and the next version's shows.
+function drawUpdate() {
+  const line = $('#update-line');
+  if (!line) return;
+  const u = state.update;
+  line.hidden = !u;
+  if (!u) return line.replaceChildren();
+  line.replaceChildren(h('span', {}, `Transcriber ${u.version} is available.`),
+    h('div', {class: 'acts'},
+      h('button', {class: 'btn quiet', type: 'button', onclick: () => desk.updateOpen()}, 'Download'),
+      h('button', {class: 'btn quiet', type: 'button', onclick: () => desk.updateSkip()}, 'Dismiss')));
+}
+
+desk.onUpdate(u => { state.update = u; drawUpdate(); });
+
 // ---------------------------------------------------------------- adding recordings, exporting
 
 async function addRecordings(paths, speakers = '') {
@@ -1528,6 +1546,8 @@ window.__test = {
   tab: t => setTab(t),
   // The setup line as a new Mac shows it.
   setup: ({speech} = {}) => { if (speech) state.speech = speech; drawSpeech(); },
+  // The new-version line, as {version} or null.
+  update: u => { state.update = u || null; drawUpdate(); },
 };
 
 // Whether Claude's suggestions are on, as Settings says; the menu and the header follow it.
@@ -1540,4 +1560,6 @@ desk.onAi(mode => { state.aiMode = mode; if (state.data) renderMeta(); });
   else render();
   state.speech = await desk.speech();
   drawSpeech();
+  state.update = await desk.update();
+  drawUpdate();
 })();
