@@ -17,19 +17,16 @@ the app has checked: it never downloads anything, and FluidAudio's own downloade
 that cannot resolve, so a missing file fails the job instead of being fetched unchecked. `scripts/models.js`
 writes the list, and checks each small file against the git id its commit names.
 
-**Claude's suggestions.** They are off until you choose Claude Code or an API key in Settings. Then, after the
+**Claude's suggestions.** They are off until you choose Claude Code in Settings. Then, after the
 two engines finish, the app sends Claude the transcript's text, the places the engines disagree, your word list
 and the names you typed when adding the recording. It never sends the audio. Claude's answer is held as
 suggestions in `ai.json`, and none of them goes into the text until you accept it.
 
-- *Claude Code* runs the `claude` command already installed on your Mac, signed in to your own account. The app
-  removes the variables that would point it at an API key or a cloud provider, and runs it with no tools, no
-  settings files and no saved session, in an empty folder of its own. The app never sees your Claude password:
-  the Sign in button opens Terminal on a script you can read, which runs Anthropic's installer if Claude Code is
-  missing and then `claude auth login`.
-- *An API key* is checked with Anthropic once, then kept in the app's data folder encrypted by macOS (Electron's
-  `safeStorage`, whose secret is in your keychain). The app sends it only to `https://api.anthropic.com`, an
-  address fixed in the code, so no setting or variable can send it elsewhere. Forget key deletes it.
+The app runs the `claude` command already installed on your Mac, signed in to your own account. It removes the
+variables that would point Claude Code at an API key or a cloud provider, and runs it with no tools, no settings
+files and no saved session, in an empty folder of its own. The app never sees your Claude password: the Sign in
+button opens Terminal on a script you can read, which runs Anthropic's installer if Claude Code is missing and
+then `claude auth login`.
 
 **The window.** The page runs sandboxed, with context isolation and no Node. Its content security policy allows
 only the app's own files. It cannot navigate away or open new windows, and every permission it asks for

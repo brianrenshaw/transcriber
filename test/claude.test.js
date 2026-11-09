@@ -1,5 +1,5 @@
-// Claude's suggestions: the prompt, both ways of asking (Claude Code and an API key, each faked here), and the
-// pipeline step that keeps the person's own decisions when Claude answers again.
+// Claude's suggestions: the prompt, asking Claude Code (faked here), the setting, and the pipeline step that
+// keeps the person's own decisions when Claude answers again.
 
 process.env.ANTHROPIC_API_KEY = 'sk-ant-from-the-environment';   // must never reach Claude Code
 const test = require('node:test');
@@ -11,7 +11,8 @@ const {readAsr} = require('../src/core/text');
 const {compareEngines} = require('../src/core/compare');
 const {buildPrompt, SCHEMA} = require('../src/core/prompt');
 const {withoutAi, emptyReview, items} = require('../src/core/review');
-const {askApi, askClaudeCode} = require('../src/main/claude');
+const {askClaudeCode} = require('../src/main/claude');
+const Settings = require('../src/main/settings');
 const Store = require('../src/main/store');
 const Pipeline = require('../src/main/pipeline');
 
@@ -69,52 +70,8 @@ test('new suggestions take the decisions on the old ones with them, and only tho
   assert.equal(out.manual.length, 1);
 });
 
-// ---- the API key, with a fake client in place of Anthropic's
-
-function fakeAnthropic(message, seen) {
-  const stream = params => { seen.push(params); return {finalMessage: async () => message}; };
-  return {messages: {stream: p => stream({...p, beta: false})}, beta: {messages: {stream: p => stream({...p, beta: true})}}};
-}
 const PROMPT = {system: 'S', user: 'U', schema: SCHEMA};
 const ANSWER = {flags: [], edits: [], paragraphs: [], headings: [], speakers: [], speaker_fixes: []};
-
-test('the API path asks for structured output, with the server-side fallback, and reads the answer', async () => {
-  const seen = [];
-  const msg = {model: 'claude-opus-5-5', stop_reason: 'end_turn', usage: {input_tokens: 10, output_tokens: 5},
-    content: [{type: 'thinking', thinking: ''}, {type: 'text', text: JSON.stringify(ANSWER)}]};
-  const {output, meta} = await askApi(PROMPT, {model: '', anthropic: fakeAnthropic(msg, seen)});
-  assert.deepEqual(output, ANSWER);
-  assert.equal(meta.via, 'api-key');
-  assert.deepEqual(meta.tokens, {input: 10, output: 5});
-  const [p] = seen;
-  assert.equal(p.model, 'claude-opus-5-5');
-  assert.equal(p.beta, true);
-  assert.deepEqual(p.betas, ['server-side-fallback-2026-07-01']);
-  assert.equal(p.fallbacks, 'default');
-  assert.deepEqual(p.output_config.format, {type: 'json_schema', schema: SCHEMA});
-  assert.equal(p.system, 'S');
-  assert.deepEqual(p.messages, [{role: 'user', content: 'U'}]);
-});
-
-test('after a fallback only the last model’s words are the answer; Haiku goes without one', async () => {
-  const seen = [];
-  const msg = {model: 'claude-opus-4-8', stop_reason: 'end_turn', usage: {},
-    content: [{type: 'text', text: '{"flags": [{"id"'}, {type: 'fallback', from: {model: 'claude-opus-5-5'}, to: {model: 'claude-opus-4-8'}},
-      {type: 'text', text: JSON.stringify(ANSWER)}]};
-  const {output, meta} = await askApi(PROMPT, {model: 'claude-sonnet-5-5', anthropic: fakeAnthropic(msg, seen)});
-  assert.deepEqual(output, ANSWER);
-  assert.equal(meta.model, 'claude-opus-4-8');
-  await askApi(PROMPT, {model: 'claude-haiku-5-5', anthropic: fakeAnthropic({...msg, content: [{type: 'text', text: '{}'}]}, seen)});
-  assert.equal(seen[1].beta, false);
-  assert.equal(seen[1].fallbacks, undefined);
-});
-
-test('a refusal, a cut-off answer and an unreadable one each say what happened', async () => {
-  const ask = message => askApi(PROMPT, {model: '', anthropic: fakeAnthropic({usage: {}, content: [], ...message}, [])});
-  await assert.rejects(ask({stop_reason: 'refusal'}), /declined/);
-  await assert.rejects(ask({stop_reason: 'max_tokens'}), /length limit/);
-  await assert.rejects(ask({stop_reason: 'end_turn', content: [{type: 'text', text: 'Sure! Here'}]}), /couldn’t read/);
-});
 
 // ---- Claude Code, with a script in place of the claude command
 
@@ -217,7 +174,7 @@ test('with Claude on, its suggestions land as their own run, and asking again ke
 });
 
 test('transcribing again clears Claude’s suggestions with the words they were about', async () => {
-  const ai = {mode: () => 'api-key', ask: async () => ({output: ANSWER, meta: {via: 'api-key', model: 'claude-opus-5-5'}})};
+  const ai = {mode: () => 'claude-code', ask: async () => ({output: ANSWER, meta: {via: 'claude-code', model: 'claude-opus-5-5'}})};
   const {store, pipeline, job} = pipelineWith(ai);
   pipeline.enqueue(job.id);
   await until(() => store.get(job.id).steps.ai?.state === 'done');
@@ -228,10 +185,23 @@ test('transcribing again clears Claude’s suggestions with the words they were 
 });
 
 test('a failed answer leaves the transcript ready and the step to try again', async () => {
-  const {store, pipeline, job} = pipelineWith({mode: () => 'api-key', ask: async () => { throw new Error('Couldn’t reach Anthropic.'); }});
+  const {store, pipeline, job} = pipelineWith({mode: () => 'claude-code', ask: async () => { throw new Error('Claude Code isn’t signed in. Settings can sign you in.'); }});
   pipeline.enqueue(job.id);
   await until(() => store.get(job.id).steps.ai?.state === 'error');
   const steps = store.get(job.id).steps;
   assert.equal(steps.compare.state, 'done');
-  assert.equal(steps.ai.error, 'Couldn’t reach Anthropic.');
+  assert.equal(steps.ai.error, 'Claude Code isn’t signed in. Settings can sign you in.');
+});
+
+// ---- the setting
+
+test('Claude is off or Claude Code, and any other saved value reads as off', () => {
+  const dir = tmp();
+  fs.writeFileSync(path.join(dir, 'settings.json'), JSON.stringify({ai: 'api-key', aiModel: 'claude-sonnet-5-5'}));
+  const settings = Settings.create(dir);
+  assert.equal(settings.get().ai, 'off');
+  assert.equal(settings.get().aiModel, 'claude-sonnet-5-5');
+  assert.equal(settings.set({ai: 'api-key'}).ai, 'off');
+  assert.equal(settings.set({ai: 'claude-code'}).ai, 'claude-code');
+  assert.equal(Settings.create(dir).get().ai, 'claude-code');
 });

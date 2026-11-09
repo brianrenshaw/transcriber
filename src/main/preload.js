@@ -24,10 +24,7 @@ contextBridge.exposeInMainWorld('desk', {
   aiMode: () => call('aiMode'),
   aiStatus: () => call('aiStatus'),
   aiSet: patch => call('aiSet', patch),
-  aiSaveKey: key => call('aiSaveKey', key),
-  aiForgetKey: () => call('aiForgetKey'),
   aiSignIn: () => call('aiSignIn'),
-  aiKeyPage: () => call('aiKeyPage'),
   onAi: fn => ipcRenderer.on('ai', (_e, mode) => fn(mode)),
   settings: () => call('settings'),
 });

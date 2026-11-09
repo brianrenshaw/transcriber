@@ -1,5 +1,5 @@
 // What Claude is asked, and the shape its answer must take. ai.js places the answer on the transcript; the
-// provider that sends this (the person's own Claude Code sign-in or their API key) lives in src/main/claude.js.
+// provider that sends this (the person's own Claude Code sign-in) lives in src/main/claude.js.
 // Only text goes: the transcript, the places the engines disagree, the word list and the names the person
 // typed. Never the audio.
 

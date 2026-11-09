@@ -6,16 +6,18 @@ const path = require('node:path');
 
 const DEFAULTS = {
   dataDir: '',             // where transcripts live; empty: <userData>/Transcripts
-  ai: 'off',               // Claude's suggestions: off, claude-code (the person's own sign-in) or api-key (their own key)
-  aiModel: '',             // empty: Claude Code's own default, or the API's default model
+  ai: 'off',               // Claude's suggestions: off, or claude-code (the person's own Claude Code sign-in)
+  aiModel: '',             // empty: Claude Code's own default model
 };
 // The values a setting may take, where it has a fixed set; anything else keeps the setting as it was.
-const CHOICES = {ai: ['off', 'claude-code', 'api-key']};
+const CHOICES = {ai: ['off', 'claude-code']};
 
 function create(userData) {
   const file = path.join(userData, 'settings.json');
   let current = {...DEFAULTS};
   try { current = {...DEFAULTS, ...JSON.parse(fs.readFileSync(file, 'utf8'))}; } catch {}
+  // A value the app no longer offers goes back to the default.
+  for (const [k, ok] of Object.entries(CHOICES)) if (!ok.includes(current[k])) current[k] = DEFAULTS[k];
   return {
     get: () => ({...current}),
     dataDir: () => current.dataDir || path.join(userData, 'Transcripts'),

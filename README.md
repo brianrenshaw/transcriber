@@ -5,8 +5,8 @@ flags every place they heard different words, and lets you settle those places b
 listening to the whole recording again.
 
 Transcribing runs locally on Apple silicon, and nothing is uploaded. If you want a second reader, Claude can
-suggest the right reading for each flagged place, using your own Claude Code sign-in or your own Anthropic API
-key. That is off until you turn it on, and a suggestion never goes into the text until you accept it.
+suggest the right reading for each flagged place, using your own Claude Code sign-in. That is off until you turn
+it on, and a suggestion never goes into the text until you accept it.
 
 It is an open-source project, not a product for sale.
 
@@ -72,23 +72,21 @@ the words, the flags and how often the engines agreed. `npm run snapshot` render
 
 ## Claude's suggestions
 
-Settings (⌘,) has three choices:
+Settings (⌘,) has two choices:
 
 - **Off**, the default. Nothing leaves your Mac.
 - **Claude Code** runs the `claude` command on your Mac, signed in to your own Claude account, and counts toward
   your plan. If Claude Code is missing or signed out, the Sign in button opens Terminal to install it and sign in.
-- **API key** uses your own key from [Anthropic's console](https://platform.claude.com/settings/keys), billed to
-  your account. An hour of recording usually costs under $1 with Claude Opus 5.5, and less with Sonnet or Haiku.
 
 New recordings get suggestions as soon as the engines finish. For one you already have, choose Ask Claude from
-its ··· menu. [SECURITY.md](SECURITY.md) says exactly what is sent and how the key is kept.
+its ··· menu. [SECURITY.md](SECURITY.md) says exactly what is sent.
 
 ## How it is put together
 
 | Path | What it is |
 | --- | --- |
 | `src/core/` | the review logic, free of Electron: `compare.js` (the two engines, word by word, using `sm.js`, a port of Python's difflib), `review.js` (flags, decisions, the reviewed text), `wordlist.js`, `text.js`, `prompt.js` (what Claude is asked, and the shape of its answer), `ai.js` (placing Claude's answer on the transcript) |
-| `src/main/` | the main process: `main.js` (window, menus, the `app://` protocol, export), `store.js` (one folder per transcript), `pipeline.js` (the steps, one transcript at a time), `speech.js` (runs the helper), `settings.js`, `claude.js` (Claude's suggestions, through Claude Code or an API key), `models.js` (downloads the speech models and checks every file against `models.json`), `preload.js` (the window's only bridge) |
+| `src/main/` | the main process: `main.js` (window, menus, the `app://` protocol, export), `store.js` (one folder per transcript), `pipeline.js` (the steps, one transcript at a time), `speech.js` (runs the helper), `settings.js`, `claude.js` (Claude's suggestions, through Claude Code), `models.js` (downloads the speech models and checks every file against `models.json`), `preload.js` (the window's only bridge) |
 | `src/renderer/` | the window: plain HTML, CSS and JavaScript |
 | `native/speech/` | `transcriber-speech`, the Swift helper that runs Parakeet (FluidAudio) and Whisper (WhisperKit) on Core ML. It loads the models the app downloaded and never downloads anything itself |
 | `scripts/` | `package-app.js` (build the app), `models.js` (pin the speech models), `run-pipeline.js` (the steps from the command line), `notices.js` (write the third-party notices) |
@@ -100,8 +98,7 @@ decisions). The folders are the truth; anything else is a cache.
 
 ## License
 
-MIT, see [LICENSE](LICENSE). The app is built on Electron, FluidAudio, WhisperKit, swift-argument-parser and
-Anthropic's TypeScript SDK, and
+MIT, see [LICENSE](LICENSE). The app is built on Electron, FluidAudio, WhisperKit and swift-argument-parser, and
 it uses Parakeet (CC BY 4.0), pyannote Community-1 (CC BY 4.0) and Whisper (MIT) models, downloaded on first
 launch. Their licenses and credits are in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md); run
 `npm run notices` after changing a dependency.

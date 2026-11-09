@@ -113,9 +113,7 @@ async function build() {
     extraResource: [HELPER, path.join(root, 'THIRD_PARTY_NOTICES.md'), path.join(root, 'node_modules', 'electron', 'dist', 'LICENSES.chromium.html')],
     // Only what the app runs; tests, scripts, the Swift sources and earlier builds stay behind.
     // replica/ (local planning notes, never committed) stays out; LICENSE and the notices ship.
-    ignore: [/^\/(test|scripts|out|build|native|replica|design|\.git|\.claude)(\/|$)/, /^\/src\/renderer\/design\.(html|css|js)$/, /^\/(README|CLAUDE|AGENTS|SECURITY)\.md$/, /^\/\.(gitignore|nvmrc|DS_Store)$/,
-      // Packages ship their TypeScript sources, type declarations, source maps and docs; the app runs only the JavaScript.
-      /^\/node_modules\/.+\.(ts|mts|cts|map|md)$/],
+    ignore: [/^\/(test|scripts|out|build|native|replica|design|\.git|\.claude)(\/|$)/, /^\/src\/renderer\/design\.(html|css|js)$/, /^\/(README|CLAUDE|AGENTS|SECURITY)\.md$/, /^\/\.(gitignore|nvmrc|DS_Store)$/],
     afterCopy: [setFuses],
     ...(sign ? {
       osxSign: {identity, optionsForFile: signOptions},

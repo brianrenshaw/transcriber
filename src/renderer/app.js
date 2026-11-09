@@ -260,8 +260,7 @@ function renderMeta() {
         h('button', {class: 'btn quiet inline', type: 'button', onclick: () => rerun('ai')}, 'Try again'), ' ',
         h('span', {title: ai.error || ''}, ai.error || ''));
     } else if (state.data.ai) {
-      const via = state.data.ai.via === 'api-key' ? 'with your API key' : 'through your Claude Code sign-in';
-      el.append(' · ', h('span', {title: `Asked ${via}`}, `Suggestions from ${modelLabel(state.data.ai.model)}`));
+      el.append(' · ', h('span', {title: 'Asked through your Claude Code sign-in'}, `Suggestions from ${modelLabel(state.data.ai.model)}`));
     }
   }
   if (state.exported) el.append(' · ', `Exported ${state.exported}`);

@@ -1,7 +1,7 @@
 // The Electron main process: the window, the menu, the app:// protocol that serves the interface and the
 // recordings, and the handlers the window calls through preload.js.
 
-const {app, BrowserWindow, Menu, dialog, ipcMain, nativeTheme, net, protocol, safeStorage, screen, session, shell} = require('electron');
+const {app, BrowserWindow, Menu, dialog, ipcMain, nativeTheme, net, protocol, screen, session, shell} = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
 const {Readable} = require('node:stream');
@@ -37,8 +37,8 @@ const broadcast = (channel, data) => { for (const w of BrowserWindow.getAllWindo
 const emit = job => send('job', summary(job));
 // The speech engines inside the app, and the one-time download of their models.
 const speech = Speech.create({userData, fetch: (url, opts) => net.fetch(url, opts), onState: s => send('speech', s)});
-// Claude's suggestions: off until the person turns them on, then through their own Claude Code or API key.
-const claude = Claude.create({userData, settings, safeStorage, open: file => shell.openPath(file)});
+// Claude's suggestions: off until the person turns them on, then through their own Claude Code sign-in.
+const claude = Claude.create({userData, settings, open: file => shell.openPath(file)});
 const pipeline = Pipeline.create({store, speech, words, emit, ai: claude});
 
 const TYPES = {'.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.svg': 'image/svg+xml', '.png': 'image/png',
@@ -184,7 +184,7 @@ function ipc() {
   on('reveal', id => { shell.showItemInFolder(store.file(id, 'job.json')); return true; });
   on('speech', () => speech.status());
   on('speechPrepare', () => { speech.prepare().catch(() => {}); return speech.state(); });
-  // Claude's suggestions: the choice in Settings, the person's key, their Claude Code sign-in.
+  // Claude's suggestions: the choice in Settings and the person's Claude Code sign-in.
   on('aiMode', () => settings.get().ai);
   on('aiStatus', () => claude.status());
   on('aiSet', async patch => {
@@ -192,21 +192,15 @@ function ipc() {
     broadcast('ai', settings.get().ai);
     return claude.status();
   });
-  on('aiSaveKey', async key => ({...await claude.saveKey(key), status: await claude.status()}));
-  on('aiForgetKey', async () => { claude.forgetKey(); return claude.status(); });
   on('aiSignIn', () => claude.signIn());
-  on('aiKeyPage', () => shell.openExternal(KEY_PAGE));
   on('settings', () => { showSettings(); return true; });
 }
-
-// Where a person makes an Anthropic API key. Fixed here, so the window can open this page and no other.
-const KEY_PAGE = 'https://platform.claude.com/settings/keys';
 
 // Settings is its own window, as on any Mac app: ⌘, opens it, and it stays open beside the transcripts.
 function showSettings() {
   if (settingsWin && !settingsWin.isDestroyed()) { settingsWin.show(); settingsWin.focus(); return; }
   settingsWin = new BrowserWindow({
-    width: 560, height: 600, resizable: false, minimizable: false, maximizable: false, fullscreenable: false,
+    width: 560, height: 500, resizable: false, minimizable: false, maximizable: false, fullscreenable: false,
     title: 'Settings', show: false, backgroundColor: nativeTheme.shouldUseDarkColors ? '#1E1E1E' : '#FFFFFF',
     webPreferences: {preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true, nodeIntegration: false},
   });

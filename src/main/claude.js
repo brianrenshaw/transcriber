@@ -1,6 +1,6 @@
-// Claude's suggestions, through the person's own Claude: their Claude Code sign-in (the claude command they
-// installed, run on their account) or their own Anthropic API key. The app has no Claude account of its own
-// and never sees a password. What goes is text only, as src/core/prompt.js builds it.
+// Claude's suggestions, through the person's own Claude Code: the claude command they installed, run on the
+// Claude account it is signed in to. The app has no Claude account of its own and never sees a password. What
+// goes is text only, as src/core/prompt.js builds it.
 
 const {spawn, execFile} = require('node:child_process');
 const fs = require('node:fs');
@@ -12,10 +12,7 @@ const MODELS = [
   {id: 'claude-sonnet-5-5', name: 'Claude Sonnet 5.5'},
   {id: 'claude-haiku-5-5', name: 'Claude Haiku 5.5'},
 ];
-const API_DEFAULT = 'claude-opus-5-5';
 const known = id => MODELS.some(m => m.id === id);
-
-// ---- Claude Code
 
 const HOME = os.homedir();
 const DIRS = [path.join(HOME, '.local', 'bin'), '/opt/homebrew/bin', '/usr/local/bin', path.join(HOME, '.claude', 'local')];
@@ -95,104 +92,25 @@ async function askClaudeCode({system, user, schema}, {model, cwd, bin}) {
   return {output: res.structured_output, meta: {via: 'claude-code', model: used || model || '', ms: res.duration_ms ?? Date.now() - t0}};
 }
 
-// ---- the person's API key
-
-function apiError(e) {
-  const sdk = require('@anthropic-ai/sdk');
-  if (e instanceof sdk.AuthenticationError) return 'Anthropic didn’t accept the API key. Check it in Settings.';
-  if (e instanceof sdk.PermissionDeniedError) return 'This API key isn’t allowed to use that model.';
-  if (e instanceof sdk.RateLimitError) return 'The API key reached its rate limit. Try again in a minute.';
-  if (e instanceof sdk.APIConnectionError) return 'Couldn’t reach Anthropic. Check the internet connection.';
-  if (e instanceof sdk.APIError) return `Anthropic said: ${e.error?.error?.message || e.message}`;
-  return String(e?.message || e);
-}
-
-// The key goes only to Anthropic: the address is fixed, so nothing in the environment can send it elsewhere.
-function client(key) {
-  const {Anthropic} = require('@anthropic-ai/sdk');
-  return new Anthropic({apiKey: key, authToken: null, baseURL: 'https://api.anthropic.com', maxRetries: 2, timeout: 30 * 60 * 1000});
-}
-
-async function askApi({system, user, schema}, {key, model, anthropic = client(key)}) {
-  const id = known(model) ? model : API_DEFAULT;
-  const params = {model: id, max_tokens: 128000, system, messages: [{role: 'user', content: user}],
-    output_config: {effort: 'high', format: {type: 'json_schema', schema}}};
-  const t0 = Date.now();
-  let msg;
-  try {
-    // A request a safety check declines is tried again on the model Anthropic recommends for it. Haiku has no
-    // such fallback.
-    const stream = id === 'claude-haiku-5-5' ? anthropic.messages.stream(params)
-      : anthropic.beta.messages.stream({...params, betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default'});
-    msg = await stream.finalMessage();
-  } catch (e) { throw new Error(apiError(e)); }
-  if (msg.stop_reason === 'refusal') throw new Error('Claude declined to review this transcript.');
-  if (msg.stop_reason === 'max_tokens') throw new Error('Claude’s answer ran past its length limit before it finished.');
-  // After a fallback, only what the last model wrote is the answer.
-  const from = msg.content.map(b => b.type).lastIndexOf('fallback') + 1;
-  const text = msg.content.slice(from).filter(b => b.type === 'text').map(b => b.text).join('');
-  let output;
-  try { output = JSON.parse(text); } catch { throw new Error('Claude answered in a form the app couldn’t read.'); }
-  return {output, meta: {via: 'api-key', model: msg.model || id, ms: Date.now() - t0,
-    tokens: {input: msg.usage?.input_tokens ?? null, output: msg.usage?.output_tokens ?? null}}};
-}
-
 // ---- the service the rest of the app uses
 
-// settings: settings.js. safeStorage: Electron's, which keeps the key encrypted with a secret in the Keychain.
-// open: opens a file the way the Finder would (shell.openPath).
-function create({userData, settings, safeStorage, open}) {
-  const keyFile = path.join(userData, 'anthropic-key');
+// settings: settings.js. open: opens a file the way the Finder would (shell.openPath).
+function create({userData, settings, open}) {
   const workDir = path.join(userData, 'claude');
-
-  const keys = {
-    saved: () => fs.existsSync(keyFile),
-    read() { try { return safeStorage.decryptString(fs.readFileSync(keyFile)); } catch { return ''; } },
-    write(key) {
-      if (!safeStorage.isEncryptionAvailable()) throw new Error('The Keychain isn’t available, so the key can’t be kept safely.');
-      fs.mkdirSync(userData, {recursive: true});
-      const tmp = `${keyFile}.${process.pid}.tmp`;
-      fs.writeFileSync(tmp, safeStorage.encryptString(key), {mode: 0o600});
-      fs.renameSync(tmp, keyFile);
-    },
-  };
-  const hint = () => { const k = keys.read(); return k ? `…${k.slice(-4)}` : ''; };
   const mode = () => settings.get().ai;
 
   async function status() {
     const s = settings.get();
-    return {mode: s.ai, model: s.aiModel, models: MODELS, apiDefault: API_DEFAULT,
-      claudeCode: s.ai === 'claude-code' ? await claudeCodeStatus() : null,
-      key: {saved: keys.saved(), hint: keys.saved() ? hint() : ''}};
+    return {mode: s.ai, model: s.aiModel, models: MODELS, claudeCode: s.ai === 'claude-code' ? await claudeCodeStatus() : null};
   }
 
-  // Ask Claude about one transcript, the way Settings says.
+  // Ask Claude about one transcript, if Settings has it on.
   async function ask(prompt) {
     const s = settings.get();
-    if (s.ai === 'claude-code') {
-      fs.mkdirSync(workDir, {recursive: true});
-      return askClaudeCode(prompt, {model: s.aiModel, cwd: workDir});
-    }
-    if (s.ai === 'api-key') {
-      const key = keys.read();
-      if (!key) throw new Error('There’s no API key saved. Add one in Settings.');
-      return askApi(prompt, {key, model: s.aiModel});
-    }
-    throw new Error('Claude’s suggestions are off in Settings.');
+    if (s.ai !== 'claude-code') throw new Error('Claude’s suggestions are off in Settings.');
+    fs.mkdirSync(workDir, {recursive: true});
+    return askClaudeCode(prompt, {model: s.aiModel, cwd: workDir});
   }
-
-  // A key is checked with Anthropic before it is kept, so a typo shows straight away.
-  async function saveKey(key) {
-    const k = String(key || '').trim();
-    if (!/^sk-ant-[A-Za-z0-9_-]{20,}$/.test(k)) return {ok: false, error: 'That doesn’t look like an Anthropic API key. They start with sk-ant-.'};
-    try { await client(k).models.retrieve(known(settings.get().aiModel) ? settings.get().aiModel : API_DEFAULT); } catch (e) {
-      return {ok: false, error: apiError(e)};
-    }
-    try { keys.write(k); } catch (e) { return {ok: false, error: e.message}; }
-    return {ok: true};
-  }
-
-  function forgetKey() { fs.rmSync(keyFile, {force: true}); return {ok: true}; }
 
   // Claude Code in a Terminal window: Anthropic's installer first if it is missing, then its own sign-in. A
   // .command file opens in Terminal without the app asking to control it, and the person sees every step.
@@ -222,7 +140,7 @@ function create({userData, settings, safeStorage, open}) {
 
   const stop = () => { for (const c of running) c.kill('SIGTERM'); };
 
-  return {mode, status, ask, saveKey, forgetKey, signIn, stop};
+  return {mode, status, ask, signIn, stop};
 }
 
-module.exports = {create, askApi, askClaudeCode, MODELS, API_DEFAULT};
+module.exports = {create, askClaudeCode, MODELS};

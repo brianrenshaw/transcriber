@@ -2,7 +2,7 @@
 // for each flag and proposes discrete edits, and this turns its structured answer into suggestions tied to
 // word ranges. Every one of them waits for a person to accept or skip it. Nothing changes silently.
 //
-// The prompt and the provider (the person's own Claude Code sign-in, their API key, or none) live elsewhere;
+// The prompt and the provider (the person's own Claude Code sign-in, or none) live elsewhere;
 // this file only knows the answer's shape.
 
 const {clock} = require('./text');

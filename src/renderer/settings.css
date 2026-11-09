@@ -21,6 +21,3 @@ body.settings { overflow: auto; background: var(--bg); }
 select.link-input { appearance: auto; padding: 5px var(--sp-2); }
 .privacy { margin-top: var(--sp-4); color: var(--text-muted); font-size: var(--fs-note); max-width: 62ch; display: grid; gap: var(--sp-2); }
 .privacy p { margin: 0; }
-.link { border: 0; background: none; padding: 0; color: var(--accent); cursor: default; text-decoration: underline; text-underline-offset: 2px; }
-.link:hover { color: var(--accent-hover); }
-.link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
